@@ -269,6 +269,8 @@ export function SettingsPanel(): React.JSX.Element {
                   onChange={(e) => {
                     const file = e.target.files?.[0]
                     if (file) handleImport(file)
+                    // Reset so re-selecting the same file fires onChange again.
+                    e.target.value = ''
                   }}
                 />
               </div>

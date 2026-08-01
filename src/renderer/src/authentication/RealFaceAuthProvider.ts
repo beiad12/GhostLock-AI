@@ -3,20 +3,38 @@ import type { FaceAuthProvider } from './FaceAuthProvider'
 import type { FaceMetrics, LivenessChallengeKind } from '../types/auth'
 import { loadFaceModels } from './faceApiModels'
 import { averageEyeAspectRatio, yawEstimate, pitchEstimate, mouthAspectRatio } from './faceGeometry'
+import { useSettingsStore } from '../store/settingsStore'
+
+/**
+ * The "Sensitivity" setting drives how readily the detector considers
+ * something a face at all (the score threshold), independent of
+ * "Confidence Threshold" which drives whether a detected face is judged to
+ * be *the enrolled* face. Higher sensitivity = lower score threshold =
+ * detects faces more readily (useful in poor lighting), at the cost of
+ * being more prone to false detections.
+ */
+function detectorScoreThreshold(): number {
+  const sensitivity = useSettingsStore.getState().settings.sensitivity
+  return clamp(0.2, 0.7, 0.7 - (sensitivity / 100) * 0.5)
+}
 
 // Used for anything that feeds the actual accept/reject decision (matching,
 // enrollment, liveness geometry) — higher input size for better accuracy.
-const DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
-  inputSize: 224,
-  scoreThreshold: 0.5
-})
+function detectorOptions(): faceapi.TinyFaceDetectorOptions {
+  return new faceapi.TinyFaceDetectorOptions({
+    inputSize: 224,
+    scoreThreshold: detectorScoreThreshold()
+  })
+}
 // Used only for the live HUD bounding box / metrics display, which doesn't
 // feed any security decision — a smaller input size trades a little
 // precision for a noticeably snappier-feeling tracking loop.
-const HUD_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
-  inputSize: 160,
-  scoreThreshold: 0.5
-})
+function hudDetectorOptions(): faceapi.TinyFaceDetectorOptions {
+  return new faceapi.TinyFaceDetectorOptions({
+    inputSize: 160,
+    scoreThreshold: detectorScoreThreshold()
+  })
+}
 
 /**
  * Real, on-device face authentication backed by @vladmandic/face-api
@@ -42,7 +60,7 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
       if (!this.video) return
       try {
         const result = await faceapi
-          .detectSingleFace(this.video, HUD_DETECTOR_OPTIONS)
+          .detectSingleFace(this.video, hudDetectorOptions())
           .withFaceLandmarks()
         this.metrics = result ? this.toFaceMetrics(result) : null
       } catch (err) {
@@ -105,7 +123,7 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
     for (let i = 0; i < steps; i++) {
       try {
         const result = await faceapi
-          .detectSingleFace(this.video, DETECTOR_OPTIONS)
+          .detectSingleFace(this.video, detectorOptions())
           .withFaceLandmarks()
         if (result) {
           samples.push({
@@ -171,7 +189,7 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
     for (let i = 0; i < attempts; i++) {
       try {
         const result = await faceapi
-          .detectSingleFace(this.video, DETECTOR_OPTIONS)
+          .detectSingleFace(this.video, detectorOptions())
           .withFaceLandmarks()
           .withFaceDescriptor()
         if (result) return result.descriptor

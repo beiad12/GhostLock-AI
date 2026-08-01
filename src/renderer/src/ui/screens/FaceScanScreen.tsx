@@ -61,13 +61,23 @@ export function FaceScanScreen(): React.JSX.Element {
       setPhase('detecting')
       await provider.startDetection(videoRef.current!)
 
-      // Poll metrics until a face is confidently detected.
-      await new Promise<void>((resolve) => {
+      // Poll metrics until a face is confidently detected — bounded, so a
+      // camera that never finds a face (bad lighting/angle, or the
+      // recognition engine failing to load) surfaces as a clear denial
+      // instead of leaving the screen stuck at "ACQUIRING TARGET LOCK"
+      // forever.
+      const DETECTION_TIMEOUT_MS = 12000
+      await new Promise<void>((resolve, reject) => {
+        const timeoutId = window.setTimeout(() => {
+          window.clearInterval(poll)
+          reject(new Error('No face detected within the time limit — check camera and lighting.'))
+        }, DETECTION_TIMEOUT_MS)
         const poll = window.setInterval(() => {
           const m = provider.getLatestMetrics()
           if (m) {
             setMetrics(m)
             window.clearInterval(poll)
+            window.clearTimeout(timeoutId)
             resolve()
           }
         }, 100)
@@ -100,13 +110,9 @@ export function FaceScanScreen(): React.JSX.Element {
       if (!livenessOk) {
         window.clearInterval(metricsInterval)
         if (soundsEnabled) sfx.accessDenied()
-        await recordAttempt({
-          success: false,
-          userName: null,
-          confidence: 0,
-          reason: 'Liveness check failed'
-        })
-        setAuthResult(null, 0)
+        const reason = 'Liveness check failed — could not confirm the requested motion'
+        await recordAttempt({ success: false, userName: null, confidence: 0, reason })
+        setAuthResult(null, 0, reason)
         setPhase('denied')
         goTo('denied')
         return
@@ -131,13 +137,17 @@ export function FaceScanScreen(): React.JSX.Element {
       if (cancelled) return
 
       const success = bestConfidence >= confidenceThreshold && bestName !== null
+      const denialReason =
+        enrolledUsers.length === 0
+          ? 'No face is enrolled on this device yet'
+          : `Confidence ${bestConfidence.toFixed(1)}% below threshold ${confidenceThreshold}% — try Settings → Recognition if this keeps happening to you`
       await recordAttempt({
         success,
         userName: success ? bestName : null,
         confidence: bestConfidence,
-        reason: success ? undefined : 'Confidence below threshold'
+        reason: success ? undefined : denialReason
       })
-      setAuthResult(success ? bestName : null, bestConfidence)
+      setAuthResult(success ? bestName : null, bestConfidence, success ? null : denialReason)
 
       if (success) {
         if (soundsEnabled) sfx.accessGranted()
@@ -157,16 +167,12 @@ export function FaceScanScreen(): React.JSX.Element {
       console.error('[FaceScanScreen] scan flow failed', err)
       if (cancelled) return
       if (soundsEnabled) sfx.accessDenied()
-      await recordAttempt({
-        success: false,
-        userName: null,
-        confidence: 0,
-        reason:
-          err instanceof Error
-            ? `Recognition engine error: ${err.message}`
-            : 'Recognition engine error'
-      })
-      setAuthResult(null, 0)
+      const reason =
+        err instanceof Error
+          ? `Recognition engine error: ${err.message}`
+          : 'Recognition engine error'
+      await recordAttempt({ success: false, userName: null, confidence: 0, reason })
+      setAuthResult(null, 0, reason)
       setPhase('denied')
       goTo('denied')
     })
@@ -214,32 +220,29 @@ export function FaceScanScreen(): React.JSX.Element {
         <div className="relative w-[560px] max-w-full aspect-square flex items-center justify-center">
           <RadarSweep size={620} className="absolute" />
           <div
-            className="relative w-[420px] h-[420px] rounded-xl overflow-hidden border-2"
+            className="relative w-[420px] h-[420px] rounded-xl overflow-hidden border-2 scale-x-[-1]"
             style={{ borderColor: 'var(--gl-glass-border)' }}
           >
+            {/*
+              Mirroring lives on this whole frame (video + bounding box
+              together) rather than just the <video>, so the box drawn from
+              raw detection coordinates lines up with the mirrored face
+              instead of appearing on the opposite side.
+            */}
             {error ? (
               <div
-                className="h-full w-full flex items-center justify-center gl-mono text-sm p-4 text-center"
+                className="h-full w-full flex items-center justify-center gl-mono text-sm p-4 text-center scale-x-[-1]"
                 style={{ color: 'var(--gl-danger)' }}
               >
                 {error}
               </div>
             ) : (
-              <video
-                ref={videoRef}
-                className="h-full w-full object-cover scale-x-[-1]"
-                muted
-                playsInline
-              />
+              <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
             )}
-            <ScanLaser active={phase === 'detecting' || phase === 'analyzing'} />
 
-            {/* Corner brackets */}
-            {(['tl', 'tr', 'bl', 'br'] as const).map((corner) => (
-              <CornerBracket key={corner} corner={corner} />
-            ))}
-
-            {/* Bounding box */}
+            {/* Bounding box — drawn in the same (unmirrored) coordinate
+                space as the video, so it inherits the frame's mirror and
+                lines up correctly. */}
             {metrics && (
               <div
                 className="absolute border-2 rounded-md transition-all duration-150"
@@ -253,6 +256,15 @@ export function FaceScanScreen(): React.JSX.Element {
                 }}
               />
             )}
+
+            {/* Chrome that must stay visually upright: counter-mirror it
+                back so it doesn't inherit the frame's flip. */}
+            <div className="absolute inset-0 scale-x-[-1]">
+              <ScanLaser active={phase === 'detecting' || phase === 'analyzing'} />
+              {(['tl', 'tr', 'bl', 'br'] as const).map((corner) => (
+                <CornerBracket key={corner} corner={corner} />
+              ))}
+            </div>
           </div>
 
           <AnimatePresence>

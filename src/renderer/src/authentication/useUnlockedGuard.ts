@@ -48,6 +48,11 @@ export function useUnlockedGuard(active: boolean, intervalMs = 6000): void {
         return
       }
 
+      // Require two consecutive low-confidence readings before locking.
+      // Real-world confidence is noisy (a single bad angle/lighting frame
+      // can dip below threshold even for the legitimate user) — a lone
+      // miss isn't enough evidence to slam the desk lock on its owner.
+      let consecutiveLowConfidence = 0
       intervalId = window.setInterval(async () => {
         if (cancelled) return
         // Skip cycles where no face is in frame at all — an empty desk
@@ -58,8 +63,13 @@ export function useUnlockedGuard(active: boolean, intervalMs = 6000): void {
         const { confidence } = await provider.matchEmbedding(stored)
         if (cancelled) return
         if (confidence < confidenceThreshold) {
-          if (intervalId !== null) window.clearInterval(intervalId)
-          goTo('intruderLock')
+          consecutiveLowConfidence += 1
+          if (consecutiveLowConfidence >= 2) {
+            if (intervalId !== null) window.clearInterval(intervalId)
+            goTo('intruderLock')
+          }
+        } else {
+          consecutiveLowConfidence = 0
         }
       }, intervalMs)
     }

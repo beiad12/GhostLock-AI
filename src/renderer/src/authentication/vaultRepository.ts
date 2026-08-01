@@ -27,6 +27,18 @@ export async function getOrCreateVaultKey(): Promise<string> {
   return key
 }
 
+/**
+ * Drops the in-memory vault key cache so the next read picks up whatever is
+ * currently on disk. Must be called after importing a profile bundle that
+ * overwrites key.b64 — otherwise subsequent reads keep using the old
+ * session's cached key and silently fail to decrypt the freshly-imported
+ * data (loadEnrolledUsers/loadAttemptLog swallow decrypt errors and just
+ * return empty, so the import would look like it silently did nothing).
+ */
+export function invalidateVaultKeyCache(): void {
+  cachedKey = null
+}
+
 export async function loadEnrolledUsers(): Promise<EnrolledUser[]> {
   const key = await getOrCreateVaultKey()
   const raw = await window.api.vault.read(USERS_FILE)

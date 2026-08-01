@@ -48,12 +48,12 @@ function createWindow(): void {
     mainWindow?.show()
   })
 
-  // GhostLock AI is meant to keep running as a background security service,
-  // and the whole point of a lock screen is that it can't be dismissed
-  // before authentication: an unauthenticated close is fully swallowed
-  // (window stays visible and locked). Once authenticated, closing hides
-  // to the tray instead of exiting the process; a full exit only happens
-  // via the tray's "Quit" item.
+  // The window's close (X) button doesn't exit the app while locked — it's
+  // swallowed and the window stays visible, since GhostLock AI is meant to
+  // guard the desktop. Once authenticated, closing hides to the tray
+  // instead. A full exit always works regardless of auth state via the
+  // tray's "Quit" item or the Ctrl+Alt+Q emergency shortcut below — this
+  // window-close gating is a convenience, not the app's only way out.
   mainWindow.on('close', (event) => {
     if (isQuitting) return
     event.preventDefault()

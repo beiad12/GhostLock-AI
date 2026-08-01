@@ -7,6 +7,8 @@
  * separate passphrase-derived key instead of the raw device vault key.)
  */
 
+import { invalidateVaultKeyCache } from '../authentication/vaultRepository'
+
 interface VaultBundle {
   version: 1
   exportedAt: number
@@ -49,4 +51,5 @@ export async function importProfileBundle(file: File): Promise<void> {
   await window.api.vault.write('key.b64', bundle.vaultKey)
   if (bundle.usersFile) await window.api.vault.write('users.enc.json', bundle.usersFile)
   if (bundle.attemptsFile) await window.api.vault.write('attempts.enc.json', bundle.attemptsFile)
+  invalidateVaultKeyCache()
 }

@@ -41,6 +41,18 @@ function App(): React.JSX.Element {
     goTo(enrolledUsers.length > 0 ? 'scan' : 'enroll')
   }
 
+  // If the enrolled profile gets removed (e.g. via Settings) while on any
+  // pre-auth screen, there's nothing to scan against — route back to
+  // enrollment instead of leaving the app scanning against nobody forever.
+  useEffect(() => {
+    if (
+      enrolledUsers.length === 0 &&
+      (stage === 'scan' || stage === 'granted' || stage === 'denied' || stage === 'intruderLock')
+    ) {
+      goTo('enroll')
+    }
+  }, [enrolledUsers.length, stage, goTo])
+
   return (
     <div className="h-full w-full relative gl-cursor-crosshair">
       <AnimatePresence mode="wait">

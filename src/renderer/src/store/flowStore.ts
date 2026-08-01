@@ -8,9 +8,10 @@ interface FlowStore {
   settingsOpen: boolean
   lastAuthenticatedUser: string | null
   lastConfidence: number
+  lastDenialReason: string | null
   goTo: (stage: AppStage) => void
   setSettingsOpen: (open: boolean) => void
-  setAuthResult: (userName: string | null, confidence: number) => void
+  setAuthResult: (userName: string | null, confidence: number, reason?: string | null) => void
 }
 
 export const useFlowStore = create<FlowStore>((set) => ({
@@ -18,8 +19,9 @@ export const useFlowStore = create<FlowStore>((set) => ({
   settingsOpen: false,
   lastAuthenticatedUser: null,
   lastConfidence: 0,
+  lastDenialReason: null,
   goTo: (stage) => set({ stage }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
-  setAuthResult: (userName, confidence) =>
-    set({ lastAuthenticatedUser: userName, lastConfidence: confidence })
+  setAuthResult: (userName, confidence, reason = null) =>
+    set({ lastAuthenticatedUser: userName, lastConfidence: confidence, lastDenialReason: reason })
 }))

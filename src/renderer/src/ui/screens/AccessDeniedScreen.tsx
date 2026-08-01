@@ -8,6 +8,7 @@ import { sfx, speak } from '../../audio/soundEngine'
 export function AccessDeniedScreen(): React.JSX.Element {
   const goTo = useFlowStore((s) => s.goTo)
   const confidence = useFlowStore((s) => s.lastConfidence)
+  const denialReason = useFlowStore((s) => s.lastDenialReason)
   const failedAttemptStreak = useAuthStore((s) => s.failedAttemptStreak)
   const maxFailedAttempts = useSettingsStore((s) => s.settings.maxFailedAttempts)
   const voiceEnabled = useSettingsStore((s) => s.settings.voiceEnabled)
@@ -71,6 +72,14 @@ export function AccessDeniedScreen(): React.JSX.Element {
             Confidence {confidence.toFixed(1)}% — attempt {failedAttemptStreak} of{' '}
             {maxFailedAttempts}
           </div>
+          {denialReason && (
+            <div
+              className="gl-mono text-xs mt-2 max-w-xs mx-auto"
+              style={{ color: 'var(--gl-text-muted)' }}
+            >
+              {denialReason}
+            </div>
+          )}
 
           {intruderCaptured && (
             <motion.div
