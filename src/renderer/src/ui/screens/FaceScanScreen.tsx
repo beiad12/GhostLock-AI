@@ -7,7 +7,7 @@ import { RadarSweep } from '../../animations/RadarSweep'
 import { HexOverlay } from '../../animations/HexOverlay'
 import { ScanLaser } from '../../animations/ScanLaser'
 import { ConfidenceGauge } from '../components/ConfidenceGauge'
-import { MockFaceAuthProvider } from '../../authentication/MockFaceAuthProvider'
+import { RealFaceAuthProvider } from '../../authentication/RealFaceAuthProvider'
 import type { FaceAuthProvider } from '../../authentication/FaceAuthProvider'
 import type { FaceMetrics, ScanPhase } from '../../types/auth'
 import { generateChallengeSequence } from '../../liveness/challenges'
@@ -45,7 +45,7 @@ export function FaceScanScreen(): React.JSX.Element {
   const runStartedRef = useRef(false)
 
   useEffect(() => {
-    if (!providerRef.current) providerRef.current = new MockFaceAuthProvider()
+    if (!providerRef.current) providerRef.current = new RealFaceAuthProvider()
     return () => {
       providerRef.current?.stopDetection()
     }

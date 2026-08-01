@@ -4,13 +4,16 @@ A cinematic, offline-first face-authentication security shell for Windows —
 built to look and feel like a military AI security terminal (Iron Man /
 Watch Dogs / Mr. Robot), not a normal desktop app.
 
-> **Status: Milestone 1 — Cinematic UI shell with a mocked authentication
-> engine.** The full experience (boot sequence, face-scan HUD, liveness
-> challenges, enrollment, themes, settings, security dashboard, kiosk lock,
-> auto-start, encrypted local storage) is real, working code. Biometric
-> *matching itself* is currently simulated behind a documented interface so
-> the rest of the product can be built and demoed today — see
-> [Roadmap](#roadmap) for what milestone 2 replaces it with.
+> **Status: Real, on-device face recognition — untested against an actual
+> camera.** `RealFaceAuthProvider` (`authentication/RealFaceAuthProvider.ts`)
+> runs genuine face detection, 68-point landmarks, and 128-d recognition
+> descriptors via [@vladmandic/face-api](https://github.com/vladmandic/face-api)
+> (TensorFlow.js), fully offline, and rejects faces that don't match the
+> enrolled embedding by euclidean distance. It was built and verified by
+> typecheck/lint/build in a sandbox with **no webcam and no GPU** — it has
+> never been run against a real face. Test it on real hardware before
+> trusting it, and expect to tune `Confidence Threshold` in Settings (see
+> [Caveats](#caveats-of-the-real-engine) below).
 
 ## What's real vs. simulated
 
@@ -20,13 +23,43 @@ Watch Dogs / Mr. Robot), not a normal desktop app.
 | Webcam capture, kiosk-mode lock window, auto-start at login | **Real** (Electron/OS APIs) |
 | AES-256-GCM encrypted local storage of profiles & attempt logs | **Real** (Web Crypto, keys stored in `userData`) |
 | System dashboard (CPU/RAM/disk/battery/temp) | **Real** (`systeminformation`) |
-| Face detection, landmarks, embeddings, liveness scoring | **Simulated** — see `authentication/FaceAuthProvider.ts` |
+| Face detection, 68-point landmarks, 128-d recognition descriptors | **Real** — `@vladmandic/face-api`, offline, models bundled in `src/renderer/public/models` |
+| Face matching (accept/reject by identity) | **Real** — euclidean distance vs. the enrolled descriptor |
+| Liveness challenges (blink/turn/look/smile) | **Real geometric heuristics** — eye-aspect-ratio and landmark-position deltas; thresholds are simple and untested against real motion |
 
-The simulated pieces all sit behind `FaceAuthProvider`, a single interface
+Everything face-related sits behind `FaceAuthProvider`, a single interface
 (`startDetection`, `captureEmbedding`, `matchEmbedding`,
-`evaluateLivenessChallenge`, ...). `MockFaceAuthProvider` implements it today
-with plausible, animated numbers. Nothing else in the app — UI, IPC, storage,
-flow — needs to change when a real engine is swapped in.
+`evaluateLivenessChallenge`, ...). `RealFaceAuthProvider` is the default;
+`MockFaceAuthProvider` still exists as a camera-less fallback for demoing the
+UI/animations. Nothing else in the app — UI, IPC, storage, flow — needs to
+change to swap between them, or to a more accurate engine later.
+
+## Caveats of the real engine
+
+Built without ever seeing a real face, so treat these as starting points to
+tune, not finished calibration:
+
+- **Confidence threshold.** `matchEmbedding` maps euclidean distance onto a
+  0–100 scale (`confidence = (1 - distance / 1.2) * 100`); the default
+  `Confidence Threshold` setting (55) assumes that mapping is roughly right.
+  If genuine you keeps getting rejected, lower it; if strangers get in,
+  raise it. This is real math, not a placeholder — but the specific numbers
+  need real-world data.
+- **Liveness thresholds** (`RealFaceAuthProvider.evaluateLivenessChallenge`)
+  use fixed deltas (e.g. blink = EAR drops below 72% of baseline) that have
+  never been checked against an actual blink/head-turn/smile. They may be
+  too strict (legitimate liveness fails) or too loose (a photo passes) —
+  expect to adjust the constants in that file.
+- **Performance.** Detection runs at ~4fps (250ms) during scanning and every
+  6–8s in the background guard; embedding extraction (enrollment/matching)
+  runs on demand. This should be fine on any machine with WebGL, but hasn't
+  been profiled on real hardware.
+- **Model accuracy.** The bundled `face_recognition_model` is a general
+  128-d face descriptor model, not fine-tuned for this app. It's
+  meaningfully better than a random guess (the milestone-1 mock) but not at
+  the level of InsightFace/ArcFace-class production models — good enough to
+  demo real accept/reject behavior, not yet audited for production security
+  use.
 
 ## Architecture
 
@@ -41,7 +74,7 @@ src/
     ui/screens/               Boot, Enroll, FaceScan, Granted, Denied, Dashboard, Settings
     ui/components/             Reusable HUD primitives (GlassPanel, TypingText, Toggle, ...)
     animations/                ParticleField, BinaryRain, RadarSweep, ScanLaser, HexOverlay
-    authentication/            FaceAuthProvider interface + MockFaceAuthProvider + vault repo
+    authentication/            FaceAuthProvider interface, Real + Mock providers, unlocked guard, vault repo
     liveness/                  Random liveness challenge generator
     encryption/                AES-256-GCM helpers (Web Crypto)
     camera/                    getUserMedia webcam hook
@@ -125,19 +158,26 @@ npm run build:win     # Windows installer (NSIS)
 ```
 
 On first launch you'll walk through enrollment (name + six capture angles),
-then land on the face-scan HUD. Because matching is currently mocked,
-any face plus two random liveness prompts will succeed with a high
-confidence score — this is expected at this milestone.
+then land on the face-scan HUD. Matching now genuinely compares the live
+camera face against your enrolled descriptor — a different face should be
+rejected. If it isn't (or if your own face keeps getting rejected), it's
+real calibration to do, not a known bug: start with `Confidence Threshold`
+in Settings → Recognition (see [Caveats](#caveats-of-the-real-engine)).
 
 ## Roadmap
 
-**Milestone 2 — Real face authentication engine.** Implement
-`FaceAuthProvider` against a local Python service:
-- OpenCV + MediaPipe for face landmarks, head pose, and blink/liveness
-  detection.
-- InsightFace + ONNX Runtime for embedding generation and matching.
-- Communicate with the Electron main process over a local socket/IPC — no
-  cloud calls.
+**Near-term — calibrate the real engine.** `RealFaceAuthProvider` has never
+been run against an actual camera (see [Caveats](#caveats-of-the-real-engine)).
+First real-hardware pass should: verify WebGL/TF.js initializes correctly in
+a packaged Electron build, tune `confidenceThreshold`'s distance mapping
+against real accept/reject data, and tune the liveness-challenge constants
+against real blinks/turns/smiles.
+
+**Milestone 2 — Production-grade accuracy.** Swap the general-purpose
+face-api.js recognition model for something closer to production-security
+accuracy, e.g. InsightFace/ArcFace via ONNX Runtime, still running fully
+on-device. `FaceAuthProvider` already isolates this — only
+`authentication/RealFaceAuthProvider.ts` needs to change.
 
 **Milestone 3 — Windows Credential Provider.** `authentication/` is already
 decoupled from the UI so the matching/liveness engine can be reused by a

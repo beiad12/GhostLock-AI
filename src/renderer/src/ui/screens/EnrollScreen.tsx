@@ -4,7 +4,7 @@ import { useCamera } from '../../camera/useCamera'
 import { ParticleField } from '../../animations/ParticleField'
 import { HexOverlay } from '../../animations/HexOverlay'
 import { GlassPanel } from '../components/GlassPanel'
-import { MockFaceAuthProvider } from '../../authentication/MockFaceAuthProvider'
+import { RealFaceAuthProvider } from '../../authentication/RealFaceAuthProvider'
 import type { FaceAuthProvider } from '../../authentication/FaceAuthProvider'
 import { useAuthStore } from '../../store/authStore'
 import { useSettingsStore } from '../../store/settingsStore'
@@ -35,9 +35,10 @@ export function EnrollScreen(): React.JSX.Element {
   const [name, setName] = useState('')
   const [captureIndex, setCaptureIndex] = useState(0)
   const [capturedAngles, setCapturedAngles] = useState<string[]>([])
+  const [enrollError, setEnrollError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!providerRef.current) providerRef.current = new MockFaceAuthProvider()
+    if (!providerRef.current) providerRef.current = new RealFaceAuthProvider()
     return () => {
       providerRef.current?.stopDetection()
     }
@@ -60,13 +61,19 @@ export function EnrollScreen(): React.JSX.Element {
       setStep(CAPTURE_STEPS[captureIndex + 1].step)
     } else {
       setStep('processing')
+      setEnrollError(null)
       const provider = providerRef.current!
-      const embedding = await provider.captureEmbedding()
-      await enrollUser(name.trim() || 'Operator', embedding)
-      setStep('done')
-      if (soundsEnabled) sfx.accessGranted()
-      await delay(1600)
-      goTo('scan')
+      try {
+        const embedding = await provider.captureEmbedding()
+        await enrollUser(name.trim() || 'Operator', embedding)
+        setStep('done')
+        if (soundsEnabled) sfx.accessGranted()
+        await delay(1600)
+        goTo('scan')
+      } catch (err) {
+        setEnrollError(err instanceof Error ? err.message : 'Enrollment failed')
+        setStep(CAPTURE_STEPS[CAPTURE_STEPS.length - 1].step)
+      }
     }
   }
 
@@ -159,6 +166,11 @@ export function EnrollScreen(): React.JSX.Element {
                 <div className="gl-mono text-lg mb-4" style={{ color: 'var(--gl-accent)' }}>
                   {currentStepMeta.label}
                 </div>
+                {enrollError && (
+                  <div className="gl-mono text-xs mb-3" style={{ color: 'var(--gl-danger)' }}>
+                    {enrollError} — try again.
+                  </div>
+                )}
                 <button
                   onClick={captureNextAngle}
                   className="w-full rounded-lg py-2 gl-mono text-sm uppercase tracking-widest"

@@ -3,13 +3,15 @@ import type { FaceMetrics, LivenessChallengeKind } from '../types/auth'
 /**
  * Contract every face-authentication backend must satisfy.
  *
- * Milestone 1 ships `MockFaceAuthProvider`, which drives the full cinematic
- * UI/UX with plausible, animated metrics but no real biometric matching.
- *
- * Milestone 2 swaps this for a provider backed by a local Python service
- * (OpenCV + MediaPipe for landmarks/liveness, InsightFace + ONNX Runtime for
- * embeddings) communicating over a local IPC/socket. No renderer or main
- * process code outside this interface needs to change.
+ * `RealFaceAuthProvider` is the default: real on-device face detection,
+ * 68-point landmarks, and 128-d recognition descriptors via
+ * @vladmandic/face-api (TensorFlow.js), matched with euclidean distance —
+ * genuinely offline, genuinely comparing faces, no cloud calls.
+ * `MockFaceAuthProvider` still exists as a camera-less fallback for demoing
+ * the UI/animations without a webcam. Both implement this same interface,
+ * so nothing outside `authentication/` needs to change to swap between them
+ * — or to a future, more accurate engine (e.g. InsightFace/ONNX Runtime via
+ * a local IPC/socket) later.
  */
 export interface FaceAuthProvider {
   /** Starts continuous face detection on the given video element. */

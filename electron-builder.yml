@@ -21,6 +21,10 @@ files:
   - '!.github/**'
 asarUnpack:
   - resources/**
+  # Face-recognition model weights are fetched at runtime via a relative
+  # URL from the renderer — keep them as real files outside the asar
+  # archive so that fetch() over file:// resolves them reliably.
+  - out/renderer/models/**
 win:
   executableName: GhostLock-AI
   target:
