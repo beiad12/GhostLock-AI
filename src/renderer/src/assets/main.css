@@ -1,0 +1,104 @@
+@import 'tailwindcss';
+@import './base.css';
+
+@keyframes gl-scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes gl-pulse-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    filter: drop-shadow(0 0 4px var(--gl-accent));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 14px var(--gl-accent));
+  }
+}
+
+@keyframes gl-spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gl-spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes gl-flicker {
+  0%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 0.4;
+  }
+  95% {
+    opacity: 0.85;
+  }
+}
+
+.gl-glass {
+  background: var(--gl-glass);
+  border: 1px solid var(--gl-glass-border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.gl-glow-text {
+  text-shadow:
+    0 0 6px var(--gl-accent),
+    0 0 16px var(--gl-accent-soft);
+}
+
+.gl-hud-grid {
+  background-image:
+    linear-gradient(var(--gl-glass-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--gl-glass-border) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.gl-mono {
+  font-family: 'Consolas', 'SFMono-Regular', ui-monospace, Menlo, monospace;
+  letter-spacing: 0.02em;
+}
+
+.gl-animate-scanline {
+  animation: gl-scanline 2.4s linear infinite;
+}
+
+.gl-animate-pulse-glow {
+  animation: gl-pulse-glow 2.2s ease-in-out infinite;
+}
+
+.gl-animate-spin-slow {
+  animation: gl-spin-slow 12s linear infinite;
+}
+
+.gl-animate-spin-reverse {
+  animation: gl-spin-reverse 9s linear infinite;
+}
+
+.gl-animate-flicker {
+  animation: gl-flicker 4s linear infinite;
+}
+
+.gl-cursor-crosshair {
+  cursor: crosshair;
+}

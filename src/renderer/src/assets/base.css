@@ -1,0 +1,64 @@
+/*
+  Default palette — overwritten at runtime by themes/applyTheme.ts
+  which writes these same custom properties from themes/definitions.ts.
+*/
+:root {
+  --gl-accent: #00ff9c;
+  --gl-accent-soft: rgba(0, 255, 156, 0.15);
+  --gl-accent-strong: #39ffb0;
+  --gl-secondary: #00e5ff;
+  --gl-background: #050505;
+  --gl-background-elevated: #0a0f0c;
+  --gl-glass: rgba(10, 20, 15, 0.55);
+  --gl-glass-border: rgba(0, 255, 156, 0.25);
+  --gl-text-primary: #eafff2;
+  --gl-text-secondary: #8fd8b0;
+  --gl-text-muted: #4d7a63;
+  --gl-danger: #ff3b5c;
+  --gl-warning: #ffb020;
+  --gl-success: #00ff9c;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  background: var(--gl-background);
+  color: var(--gl-text-primary);
+  font-family:
+    'Rajdhani', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--gl-accent);
+  color: #000;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gl-glass-border);
+  border-radius: 3px;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
