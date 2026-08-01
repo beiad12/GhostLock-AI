@@ -55,13 +55,23 @@ function App(): React.JSX.Element {
       {(stage === 'scan' || stage === 'unlocked') && (
         <button
           onClick={() => setSettingsOpen(true)}
-          className="fixed top-6 right-6 z-40 gl-glass rounded-full h-11 w-11 flex items-center justify-center gl-mono text-lg"
+          className="fixed top-6 right-16 z-40 gl-glass rounded-full h-11 w-11 flex items-center justify-center gl-mono text-lg"
           style={{ color: 'var(--gl-accent)' }}
           aria-label="Open settings"
         >
           ⚙
         </button>
       )}
+
+      <button
+        onClick={() => window.api.window.hideToTray()}
+        className="fixed top-6 right-6 z-40 gl-glass rounded-full h-11 w-11 flex items-center justify-center gl-mono text-lg"
+        style={{ color: 'var(--gl-text-secondary)' }}
+        aria-label="Hide GhostLock AI to the system tray"
+        title="Hide to tray — GhostLock AI keeps running in the background"
+      >
+        ✕
+      </button>
 
       <SettingsPanel />
     </div>

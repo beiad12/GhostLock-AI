@@ -39,7 +39,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       createdAt: Date.now(),
       embeddingBase64: await encodeEmbedding(embedding)
     }
-    const next = [...get().enrolledUsers, user]
+    // GhostLock AI is a single-face device lock, not a multi-user directory:
+    // enrolling a new profile replaces whichever one was there before.
+    const next = [user]
     set({ enrolledUsers: next })
     await saveEnrolledUsers(next)
     return user

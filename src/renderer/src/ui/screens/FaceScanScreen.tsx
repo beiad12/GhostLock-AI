@@ -263,7 +263,7 @@ export function FaceScanScreen(): React.JSX.Element {
             {PHASE_LABEL[phase]}
           </div>
           <div className="gl-mono text-xs space-y-2" style={{ color: 'var(--gl-text-muted)' }}>
-            <div>Enrolled Profiles: {enrolledUsers.length}</div>
+            <div>Enrolled Face: {enrolledUsers.length > 0 ? 'YES' : 'NONE'}</div>
             <div>Threshold: {confidenceThreshold}%</div>
             <div>Encryption: AES-256 ACTIVE</div>
             <div>Network: OFFLINE (BY DESIGN)</div>

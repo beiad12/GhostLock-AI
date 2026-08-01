@@ -18,10 +18,12 @@ const api = {
   },
   window: {
     unlockDesktop: (): Promise<void> => ipcRenderer.invoke(IPC.UNLOCK_DESKTOP),
-    lockDesktop: (): Promise<void> => ipcRenderer.invoke(IPC.LOCK_DESKTOP)
+    lockDesktop: (): Promise<void> => ipcRenderer.invoke(IPC.LOCK_DESKTOP),
+    hideToTray: (): Promise<void> => ipcRenderer.invoke(IPC.HIDE_TO_TRAY)
   },
   app: {
-    version: (): Promise<string> => ipcRenderer.invoke(IPC.APP_VERSION)
+    version: (): Promise<string> => ipcRenderer.invoke(IPC.APP_VERSION),
+    quit: (): Promise<void> => ipcRenderer.invoke(IPC.QUIT_APP)
   }
 }
 

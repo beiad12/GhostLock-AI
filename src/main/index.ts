@@ -3,9 +3,15 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerIpcHandlers } from './ipcHandlers'
+import { createTray } from './windowsIntegration/tray'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
+
+function requestQuit(): void {
+  isQuitting = true
+  app.quit()
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -29,11 +35,13 @@ function createWindow(): void {
     mainWindow?.show()
   })
 
-  // GhostLock AI is designed to guard the desktop, so closing the window
-  // (outside of an authenticated unlock) should not be trivially possible.
+  // GhostLock AI is meant to keep running as a background security service,
+  // so the window (X) closes to the tray instead of exiting the process.
+  // A full exit only happens via the tray's "Quit" item.
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault()
+      mainWindow?.hide()
     }
   })
 
@@ -56,8 +64,9 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  registerIpcHandlers(() => mainWindow)
+  registerIpcHandlers(() => mainWindow, requestQuit)
   createWindow()
+  createTray(() => mainWindow, requestQuit)
 
   // Development-only escape hatch so kiosk mode never traps a dev session.
   if (is.dev) {

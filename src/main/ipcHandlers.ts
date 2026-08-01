@@ -5,7 +5,10 @@ import { getAutoLaunchEnabled, setAutoLaunchEnabled } from './windowsIntegration
 import { getSystemStats } from './windowsIntegration/systemStats'
 import { app } from 'electron'
 
-export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): void {
+export function registerIpcHandlers(
+  getMainWindow: () => BrowserWindow | null,
+  requestQuit: () => void
+): void {
   ipcMain.handle(IPC.VAULT_READ, (_event, name: string) => readVaultFile(name))
   ipcMain.handle(IPC.VAULT_WRITE, (_event, name: string, contents: string) =>
     writeVaultFile(name, contents)
@@ -32,5 +35,13 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
     win.setFullScreen(true)
     win.setAlwaysOnTop(true, 'screen-saver')
     win.setKiosk(true)
+  })
+
+  ipcMain.handle(IPC.HIDE_TO_TRAY, () => {
+    getMainWindow()?.hide()
+  })
+
+  ipcMain.handle(IPC.QUIT_APP, () => {
+    requestQuit()
   })
 }

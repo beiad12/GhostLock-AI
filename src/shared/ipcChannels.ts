@@ -7,5 +7,7 @@ export const IPC = {
   SYSTEM_STATS: 'system:stats',
   UNLOCK_DESKTOP: 'window:unlock-desktop',
   LOCK_DESKTOP: 'window:lock-desktop',
+  HIDE_TO_TRAY: 'window:hide-to-tray',
+  QUIT_APP: 'app:quit',
   APP_VERSION: 'app:version'
 } as const

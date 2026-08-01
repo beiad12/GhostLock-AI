@@ -219,10 +219,14 @@ export function SettingsPanel(): React.JSX.Element {
               />
             </Section>
 
-            <Section title="Enrolled Profiles">
+            <Section title="Enrolled Face">
+              <div className="gl-mono text-xs mb-2" style={{ color: 'var(--gl-text-muted)' }}>
+                GhostLock AI is a single-face device lock — enrolling a new face replaces this one,
+                it does not add another user.
+              </div>
               {enrolledUsers.length === 0 && (
                 <div className="gl-mono text-xs" style={{ color: 'var(--gl-text-muted)' }}>
-                  No profiles enrolled
+                  No face enrolled yet
                 </div>
               )}
               {enrolledUsers.map((u) => (
