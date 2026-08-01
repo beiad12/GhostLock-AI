@@ -80,11 +80,11 @@ export function FaceScanScreen(): React.JSX.Element {
       }, 250)
 
       setPhase('analyzing')
-      await delay(1400)
+      await delay(500)
       if (cancelled) return
 
       setPhase('liveness')
-      const challenges = generateChallengeSequence(2)
+      const challenges = generateChallengeSequence(1)
       let livenessOk = true
       for (const challenge of challenges) {
         setChallengeLabel(challenge.label)

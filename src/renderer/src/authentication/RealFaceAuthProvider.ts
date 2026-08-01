@@ -4,8 +4,17 @@ import type { FaceMetrics, LivenessChallengeKind } from '../types/auth'
 import { loadFaceModels } from './faceApiModels'
 import { averageEyeAspectRatio, yawEstimate, pitchEstimate, mouthAspectRatio } from './faceGeometry'
 
+// Used for anything that feeds the actual accept/reject decision (matching,
+// enrollment, liveness geometry) — higher input size for better accuracy.
 const DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 224,
+  scoreThreshold: 0.5
+})
+// Used only for the live HUD bounding box / metrics display, which doesn't
+// feed any security decision — a smaller input size trades a little
+// precision for a noticeably snappier-feeling tracking loop.
+const HUD_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 160,
   scoreThreshold: 0.5
 })
 
@@ -33,7 +42,7 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
       if (!this.video) return
       try {
         const result = await faceapi
-          .detectSingleFace(this.video, DETECTOR_OPTIONS)
+          .detectSingleFace(this.video, HUD_DETECTOR_OPTIONS)
           .withFaceLandmarks()
         this.metrics = result ? this.toFaceMetrics(result) : null
       } catch (err) {
@@ -89,8 +98,8 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
       mouth: number
     }> = []
 
-    const sampleWindowMs = 2200
-    const sampleIntervalMs = 120
+    const sampleWindowMs = 1400
+    const sampleIntervalMs = 90
     const steps = Math.floor(sampleWindowMs / sampleIntervalMs)
 
     for (let i = 0; i < steps; i++) {
@@ -157,7 +166,7 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
     }
   }
 
-  private async detectDescriptorWithRetry(attempts = 4): Promise<Float32Array | null> {
+  private async detectDescriptorWithRetry(attempts = 3): Promise<Float32Array | null> {
     if (!this.video) return null
     for (let i = 0; i < attempts; i++) {
       try {
@@ -171,7 +180,7 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
         // fail this attempt closed (treated as "no face found") and retry.
         console.error('[RealFaceAuthProvider] detection failed', err)
       }
-      await delay(250)
+      await delay(120)
     }
     return null
   }

@@ -36,6 +36,10 @@ export function EnrollScreen(): React.JSX.Element {
   const [captureIndex, setCaptureIndex] = useState(0)
   const [capturedAngles, setCapturedAngles] = useState<string[]>([])
   const [enrollError, setEnrollError] = useState<string | null>(null)
+  // A real descriptor captured per angle (not just once at the end) —
+  // averaging several poses into one embedding makes matching more robust
+  // to head angle/lighting than a single snapshot.
+  const descriptorsRef = useRef<Float32Array[]>([])
 
   useEffect(() => {
     if (!providerRef.current) providerRef.current = new RealFaceAuthProvider()
@@ -53,7 +57,16 @@ export function EnrollScreen(): React.JSX.Element {
   async function captureNextAngle(): Promise<void> {
     const current = CAPTURE_STEPS[captureIndex]
     if (soundsEnabled) sfx.click()
-    await delay(650)
+    setEnrollError(null)
+    const provider = providerRef.current!
+
+    try {
+      const descriptor = await provider.captureEmbedding()
+      descriptorsRef.current.push(descriptor)
+    } catch {
+      // A single missed angle isn't fatal as long as enough others land —
+      // checked against the minimum below once all steps are done.
+    }
     setCapturedAngles((prev) => [...prev, current.step])
 
     if (captureIndex + 1 < CAPTURE_STEPS.length) {
@@ -61,18 +74,24 @@ export function EnrollScreen(): React.JSX.Element {
       setStep(CAPTURE_STEPS[captureIndex + 1].step)
     } else {
       setStep('processing')
-      setEnrollError(null)
-      const provider = providerRef.current!
       try {
-        const embedding = await provider.captureEmbedding()
+        if (descriptorsRef.current.length < 3) {
+          throw new Error(
+            'Too many angles failed to capture a face — try again with better lighting.'
+          )
+        }
+        const embedding = averageDescriptors(descriptorsRef.current)
         await enrollUser(name.trim() || 'Operator', embedding)
         setStep('done')
         if (soundsEnabled) sfx.accessGranted()
-        await delay(1600)
+        await delay(1200)
         goTo('scan')
       } catch (err) {
+        descriptorsRef.current = []
+        setCapturedAngles([])
+        setCaptureIndex(0)
         setEnrollError(err instanceof Error ? err.message : 'Enrollment failed')
-        setStep(CAPTURE_STEPS[CAPTURE_STEPS.length - 1].step)
+        setStep(CAPTURE_STEPS[0].step)
       }
     }
   }
@@ -230,4 +249,15 @@ export function EnrollScreen(): React.JSX.Element {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+/** Component-wise mean of several 128-d descriptors into one embedding. */
+function averageDescriptors(descriptors: Float32Array[]): Float32Array {
+  const length = descriptors[0].length
+  const sum = new Float32Array(length)
+  for (const d of descriptors) {
+    for (let i = 0; i < length; i++) sum[i] += d[i]
+  }
+  for (let i = 0; i < length; i++) sum[i] /= descriptors.length
+  return sum
 }
