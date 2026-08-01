@@ -157,6 +157,19 @@ npm run build         # typecheck + production bundle
 npm run build:win     # Windows installer (NSIS)
 ```
 
+### Getting a prebuilt Windows installer
+
+The built installer (~112MB, since bundling the face-recognition models)
+exceeds GitHub's 100MB plain-git file size limit, so it can no longer be
+committed directly into this repo — Git LFS isn't usable through this
+project's current CI credentials either (object uploads are rejected).
+Grab the current build from the
+[Releases page](https://github.com/beiad12/GhostLock-AI/releases) instead;
+it's rebuilt via `.github/workflows/release.yml` on a native Windows
+GitHub Actions runner (no Wine emulation involved). The `installer/`
+directory in the repo itself may lag behind — build from source per above,
+or use the Release, for the current version.
+
 On first launch you'll walk through enrollment (name + six capture angles),
 then land on the face-scan HUD. Matching now genuinely compares the live
 camera face against your enrolled descriptor — a different face should be
