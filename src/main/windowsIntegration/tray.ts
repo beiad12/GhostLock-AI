@@ -7,7 +7,8 @@ import icon from '../../../resources/icon.png?asset'
  */
 export function createTray(
   getMainWindow: () => BrowserWindow | null,
-  requestQuit: () => void
+  requestQuit: () => void,
+  getAuthState: () => boolean
 ): Tray {
   const tray = new Tray(nativeImage.createFromPath(icon))
   tray.setToolTip('GhostLock AI — running in the background')
@@ -19,15 +20,27 @@ export function createTray(
     win.focus()
   }
 
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Open GhostLock AI', click: showWindow },
-      { type: 'separator' },
-      { label: 'Quit GhostLock AI', click: requestQuit }
-    ])
-  )
+  // Rebuilt right before it's shown so the Quit item's enabled state always
+  // reflects the current auth state — quitting is only possible once
+  // authenticated.
+  const rebuildMenu = (): void => {
+    const authenticated = getAuthState()
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: 'Open GhostLock AI', click: showWindow },
+        { type: 'separator' },
+        {
+          label: authenticated ? 'Quit GhostLock AI' : 'Quit (unlock required)',
+          enabled: authenticated,
+          click: requestQuit
+        }
+      ])
+    )
+  }
 
   tray.on('click', showWindow)
+  tray.on('right-click', rebuildMenu)
+  rebuildMenu()
 
   app.on('before-quit', () => tray.destroy())
 

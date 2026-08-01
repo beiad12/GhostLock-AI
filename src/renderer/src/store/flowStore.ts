@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
-export type AppStage = 'boot' | 'enroll' | 'scan' | 'granted' | 'denied' | 'unlocked'
+export type AppStage =
+  'boot' | 'enroll' | 'scan' | 'granted' | 'denied' | 'unlocked' | 'intruderLock'
 
 interface FlowStore {
   stage: AppStage

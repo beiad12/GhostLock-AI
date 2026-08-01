@@ -7,8 +7,22 @@ import { createTray } from './windowsIntegration/tray'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
+// Mirrors the renderer's auth state (set via IPC whenever it changes). Both
+// the tray's Quit item and the window's close/hide behavior are gated on
+// this so there is no way to exit or background the app before an
+// authenticated session — the whole point of a lock screen.
+let isAuthenticated = false
+
+function setAuthState(authenticated: boolean): void {
+  isAuthenticated = authenticated
+}
+
+function getAuthState(): boolean {
+  return isAuthenticated
+}
 
 function requestQuit(): void {
+  if (!isAuthenticated) return
   isQuitting = true
   app.quit()
 }
@@ -36,11 +50,15 @@ function createWindow(): void {
   })
 
   // GhostLock AI is meant to keep running as a background security service,
-  // so the window (X) closes to the tray instead of exiting the process.
-  // A full exit only happens via the tray's "Quit" item.
+  // and the whole point of a lock screen is that it can't be dismissed
+  // before authentication: an unauthenticated close is fully swallowed
+  // (window stays visible and locked). Once authenticated, closing hides
+  // to the tray instead of exiting the process; a full exit only happens
+  // via the tray's "Quit" item.
   mainWindow.on('close', (event) => {
-    if (!isQuitting) {
-      event.preventDefault()
+    if (isQuitting) return
+    event.preventDefault()
+    if (isAuthenticated) {
       mainWindow?.hide()
     }
   })
@@ -64,9 +82,9 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  registerIpcHandlers(() => mainWindow, requestQuit)
+  registerIpcHandlers(() => mainWindow, requestQuit, setAuthState, getAuthState)
   createWindow()
-  createTray(() => mainWindow, requestQuit)
+  createTray(() => mainWindow, requestQuit, getAuthState)
 
   // Development-only escape hatch so kiosk mode never traps a dev session.
   if (is.dev) {

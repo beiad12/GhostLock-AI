@@ -9,5 +9,6 @@ export const IPC = {
   LOCK_DESKTOP: 'window:lock-desktop',
   HIDE_TO_TRAY: 'window:hide-to-tray',
   QUIT_APP: 'app:quit',
-  APP_VERSION: 'app:version'
+  APP_VERSION: 'app:version',
+  SET_AUTH_STATE: 'app:set-auth-state'
 } as const

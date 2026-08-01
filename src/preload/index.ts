@@ -23,7 +23,9 @@ const api = {
   },
   app: {
     version: (): Promise<string> => ipcRenderer.invoke(IPC.APP_VERSION),
-    quit: (): Promise<void> => ipcRenderer.invoke(IPC.QUIT_APP)
+    quit: (): Promise<void> => ipcRenderer.invoke(IPC.QUIT_APP),
+    setAuthState: (authenticated: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC.SET_AUTH_STATE, authenticated)
   }
 }
 

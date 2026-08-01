@@ -7,7 +7,9 @@ import { app } from 'electron'
 
 export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
-  requestQuit: () => void
+  requestQuit: () => void,
+  setAuthState: (authenticated: boolean) => void,
+  getAuthState: () => boolean
 ): void {
   ipcMain.handle(IPC.VAULT_READ, (_event, name: string) => readVaultFile(name))
   ipcMain.handle(IPC.VAULT_WRITE, (_event, name: string, contents: string) =>
@@ -37,11 +39,18 @@ export function registerIpcHandlers(
     win.setKiosk(true)
   })
 
+  // Both of these are no-ops while unauthenticated — there is no way to
+  // hide or exit GhostLock AI until an authenticated session is active.
   ipcMain.handle(IPC.HIDE_TO_TRAY, () => {
+    if (!getAuthState()) return
     getMainWindow()?.hide()
   })
 
   ipcMain.handle(IPC.QUIT_APP, () => {
     requestQuit()
+  })
+
+  ipcMain.handle(IPC.SET_AUTH_STATE, (_event, authenticated: boolean) => {
+    setAuthState(authenticated)
   })
 }

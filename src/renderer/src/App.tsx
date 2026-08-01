@@ -11,6 +11,7 @@ import { FaceScanScreen } from './ui/screens/FaceScanScreen'
 import { AccessGrantedScreen } from './ui/screens/AccessGrantedScreen'
 import { AccessDeniedScreen } from './ui/screens/AccessDeniedScreen'
 import { UnlockedDashboard } from './ui/screens/UnlockedDashboard'
+import { IntruderLockScreen } from './ui/screens/IntruderLockScreen'
 import { SettingsPanel } from './ui/screens/SettingsPanel'
 
 function App(): React.JSX.Element {
@@ -27,6 +28,12 @@ function App(): React.JSX.Element {
     initAuth()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Mirrors auth state into the main process so it can gate closing/quitting
+  // the app — there is no way to exit GhostLock AI before authentication.
+  useEffect(() => {
+    window.api.app.setAuthState(stage === 'unlocked')
+  }, [stage])
 
   function handleBootComplete(): void {
     goTo(enrolledUsers.length > 0 ? 'scan' : 'enroll')
@@ -49,6 +56,7 @@ function App(): React.JSX.Element {
           {stage === 'granted' && <AccessGrantedScreen />}
           {stage === 'denied' && <AccessDeniedScreen />}
           {stage === 'unlocked' && <UnlockedDashboard />}
+          {stage === 'intruderLock' && <IntruderLockScreen />}
         </motion.div>
       </AnimatePresence>
 
@@ -63,15 +71,17 @@ function App(): React.JSX.Element {
         </button>
       )}
 
-      <button
-        onClick={() => window.api.window.hideToTray()}
-        className="fixed top-6 right-6 z-40 gl-glass rounded-full h-11 w-11 flex items-center justify-center gl-mono text-lg"
-        style={{ color: 'var(--gl-text-secondary)' }}
-        aria-label="Hide GhostLock AI to the system tray"
-        title="Hide to tray — GhostLock AI keeps running in the background"
-      >
-        ✕
-      </button>
+      {stage === 'unlocked' && (
+        <button
+          onClick={() => window.api.window.hideToTray()}
+          className="fixed top-6 right-6 z-40 gl-glass rounded-full h-11 w-11 flex items-center justify-center gl-mono text-lg"
+          style={{ color: 'var(--gl-text-secondary)' }}
+          aria-label="Hide GhostLock AI to the system tray"
+          title="Hide to tray — GhostLock AI keeps running in the background"
+        >
+          ✕
+        </button>
+      )}
 
       <SettingsPanel />
     </div>

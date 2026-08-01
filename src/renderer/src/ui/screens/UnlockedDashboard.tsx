@@ -4,8 +4,11 @@ import { useSystemStats } from '../../dashboard/useSystemStats'
 import { StatCard } from '../../dashboard/StatCard'
 import { useFlowStore } from '../../store/flowStore'
 import { useAuthStore } from '../../store/authStore'
+import { useSettingsStore } from '../../store/settingsStore'
 import { HexOverlay } from '../../animations/HexOverlay'
 import { ParticleField } from '../../animations/ParticleField'
+import { useInactivityAutoLock } from '../../utils/useInactivityAutoLock'
+import { useUnlockedGuard } from '../../authentication/useUnlockedGuard'
 
 export function UnlockedDashboard(): React.JSX.Element {
   const stats = useSystemStats()
@@ -13,6 +16,7 @@ export function UnlockedDashboard(): React.JSX.Element {
   const goTo = useFlowStore((s) => s.goTo)
   const setSettingsOpen = useFlowStore((s) => s.setSettingsOpen)
   const attemptLog = useAuthStore((s) => s.attemptLog)
+  const autoLockMinutes = useSettingsStore((s) => s.settings.autoLockMinutes)
   const [sessionStart] = useState(() => Date.now())
   const [now, setNow] = useState(() => Date.now())
 
@@ -20,6 +24,13 @@ export function UnlockedDashboard(): React.JSX.Element {
     const id = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(id)
   }, [])
+
+  useInactivityAutoLock(true, autoLockMinutes, () => {
+    void window.api.window.lockDesktop()
+    goTo('scan')
+  })
+
+  useUnlockedGuard(true)
 
   const sessionSeconds = Math.floor((now - sessionStart) / 1000)
   const sessionLabel = `${String(Math.floor(sessionSeconds / 60)).padStart(2, '0')}:${String(sessionSeconds % 60).padStart(2, '0')}`

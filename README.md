@@ -82,6 +82,38 @@ Framer Motion and CSS keyframes for 60fps GPU-accelerated motion.
 - `Ctrl+Shift+Q` is a **dev-only** escape hatch (`is.dev`) so kiosk mode
   never traps a development session; it does not exist in production builds.
 
+## Close/quit is gated on authentication
+
+There is no way to dismiss or exit GhostLock AI before an authenticated
+session — the window's close button, the tray's "Quit" item, and the
+in-app hide-to-tray button are all no-ops while locked. The renderer
+mirrors its auth state into the main process on every stage change
+(`App.tsx` → `IPC.SET_AUTH_STATE`), and the main process enforces it
+independently in the window's `close` handler and the tray menu
+(`main/index.ts`, `main/windowsIntegration/tray.ts`) — not just hidden UI,
+actually unusable. Once authenticated, closing hides to the tray instead of
+exiting the process, so GhostLock AI keeps guarding the machine in the
+background.
+
+## Leaving the PC unattended
+
+Two independent mechanisms re-lock an unlocked session, both active only
+while `stage === 'unlocked'`:
+
+- **Inactivity timeout** (`utils/useInactivityAutoLock.ts`) — 100% real:
+  tracks mouse/keyboard/touch activity and silently re-locks after the
+  configured `Auto-Lock After Inactivity` minutes (Settings → Recognition).
+- **Background re-verification guard** (`authentication/useUnlockedGuard.ts`)
+  — periodically re-checks the camera against the enrolled face while
+  unlocked. On a mismatch it fires the `IntruderLockScreen` ("UNIDENTIFIED
+  USER DETECTED — SYSTEM LOCKED", with alarm/voice/glitch), re-engages the
+  kiosk lock, and drops back to the scan screen. **This one inherits the
+  milestone-1 mock's limits** — `MockFaceAuthProvider.matchEmbedding` doesn't
+  actually compare faces yet, so the guard layers an independent random
+  "is this still you" roll on top purely to demo the UX end to end. Real
+  "someone else picked up my laptop" detection needs the milestone 2
+  biometric engine wired into this same hook.
+
 ## Getting started
 
 ```bash
