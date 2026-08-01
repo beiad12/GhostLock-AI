@@ -22,7 +22,6 @@ function getAuthState(): boolean {
 }
 
 function requestQuit(): void {
-  if (!isAuthenticated) return
   isQuitting = true
   app.quit()
 }
@@ -84,9 +83,18 @@ app.whenReady().then(() => {
 
   registerIpcHandlers(() => mainWindow, requestQuit, setAuthState, getAuthState)
   createWindow()
-  createTray(() => mainWindow, requestQuit, getAuthState)
+  createTray(() => mainWindow, requestQuit)
 
-  // Development-only escape hatch so kiosk mode never traps a dev session.
+  // Guaranteed emergency exit — always registered, in every build, whether
+  // or not authentication is working. A lock screen with no way out is a
+  // hazard, not a feature: if face recognition ever misfires, this (and the
+  // tray's "Quit" item) is what stops it from being a permanent lockout.
+  globalShortcut.register('CommandOrControl+Alt+Q', () => {
+    isQuitting = true
+    app.quit()
+  })
+
+  // Development-only extra escape hatch so kiosk mode never traps a dev session.
   if (is.dev) {
     globalShortcut.register('CommandOrControl+Shift+Q', () => {
       isQuitting = true

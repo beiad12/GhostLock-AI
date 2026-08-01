@@ -150,7 +150,26 @@ export function FaceScanScreen(): React.JSX.Element {
       }
     }
 
-    run()
+    run().catch(async (err) => {
+      // Any unexpected failure (e.g. the recognition engine failing to
+      // initialize) must not leave the screen frozen mid-scan — surface it
+      // as a denial with a clear reason instead of hanging forever.
+      console.error('[FaceScanScreen] scan flow failed', err)
+      if (cancelled) return
+      if (soundsEnabled) sfx.accessDenied()
+      await recordAttempt({
+        success: false,
+        userName: null,
+        confidence: 0,
+        reason:
+          err instanceof Error
+            ? `Recognition engine error: ${err.message}`
+            : 'Recognition engine error'
+      })
+      setAuthResult(null, 0)
+      setPhase('denied')
+      goTo('denied')
+    })
     return () => {
       cancelled = true
     }

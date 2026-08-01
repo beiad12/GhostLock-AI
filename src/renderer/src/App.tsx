@@ -29,8 +29,10 @@ function App(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Mirrors auth state into the main process so it can gate closing/quitting
-  // the app — there is no way to exit GhostLock AI before authentication.
+  // Mirrors auth state into the main process, which uses it to gate the
+  // in-window hide-to-tray button before authentication. Quitting the app
+  // entirely is NOT gated on this — see main/index.ts and tray.ts for why:
+  // a lock screen with no guaranteed exit is a hazard, not a feature.
   useEffect(() => {
     window.api.app.setAuthState(stage === 'unlocked')
   }, [stage])
@@ -81,6 +83,15 @@ function App(): React.JSX.Element {
         >
           ✕
         </button>
+      )}
+
+      {stage !== 'unlocked' && (
+        <div
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 gl-mono text-[11px] tracking-wide px-3 py-1 rounded-full gl-glass"
+          style={{ color: 'var(--gl-text-muted)' }}
+        >
+          Emergency exit: Ctrl+Alt+Q — or right-click the tray icon → Quit
+        </div>
       )}
 
       <SettingsPanel />

@@ -31,14 +31,15 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
 
     this.metricsIntervalId = window.setInterval(async () => {
       if (!this.video) return
-      const result = await faceapi
-        .detectSingleFace(this.video, DETECTOR_OPTIONS)
-        .withFaceLandmarks()
-      if (!result) {
+      try {
+        const result = await faceapi
+          .detectSingleFace(this.video, DETECTOR_OPTIONS)
+          .withFaceLandmarks()
+        this.metrics = result ? this.toFaceMetrics(result) : null
+      } catch (err) {
+        console.error('[RealFaceAuthProvider] metrics detection failed', err)
         this.metrics = null
-        return
       }
-      this.metrics = this.toFaceMetrics(result)
     }, 250)
   }
 
@@ -93,24 +94,31 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
     const steps = Math.floor(sampleWindowMs / sampleIntervalMs)
 
     for (let i = 0; i < steps; i++) {
-      const result = await faceapi
-        .detectSingleFace(this.video, DETECTOR_OPTIONS)
-        .withFaceLandmarks()
-      if (result) {
-        samples.push({
-          ear: averageEyeAspectRatio(result.landmarks.getLeftEye(), result.landmarks.getRightEye()),
-          yaw: yawEstimate(
-            result.landmarks.getLeftEye(),
-            result.landmarks.getRightEye(),
-            result.landmarks.getNose()
-          ),
-          pitch: pitchEstimate(
-            result.landmarks.getLeftEye(),
-            result.landmarks.getRightEye(),
-            result.landmarks.getNose()
-          ),
-          mouth: mouthAspectRatio(result.landmarks.getMouth())
-        })
+      try {
+        const result = await faceapi
+          .detectSingleFace(this.video, DETECTOR_OPTIONS)
+          .withFaceLandmarks()
+        if (result) {
+          samples.push({
+            ear: averageEyeAspectRatio(
+              result.landmarks.getLeftEye(),
+              result.landmarks.getRightEye()
+            ),
+            yaw: yawEstimate(
+              result.landmarks.getLeftEye(),
+              result.landmarks.getRightEye(),
+              result.landmarks.getNose()
+            ),
+            pitch: pitchEstimate(
+              result.landmarks.getLeftEye(),
+              result.landmarks.getRightEye(),
+              result.landmarks.getNose()
+            ),
+            mouth: mouthAspectRatio(result.landmarks.getMouth())
+          })
+        }
+      } catch (err) {
+        console.error('[RealFaceAuthProvider] liveness sample failed', err)
       }
       await delay(sampleIntervalMs)
     }
@@ -119,26 +127,30 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
 
     const baseline = samples[0]
 
+    // Thresholds loosened from their initial untested values after a real
+    // first camera test showed the enrolled user getting rejected. Still
+    // real geometry, just more forgiving margins — tighten these back up
+    // once you've confirmed genuine liveness (a photo/video) still fails.
     switch (kind) {
       case 'blink': {
         const minEar = Math.min(...samples.map((s) => s.ear))
-        return minEar < baseline.ear * 0.72
+        return minEar < baseline.ear * 0.82
       }
       case 'turnLeft': {
         const minYaw = Math.min(...samples.map((s) => s.yaw))
-        return minYaw < baseline.yaw - 0.09
+        return minYaw < baseline.yaw - 0.05
       }
       case 'turnRight': {
         const maxYaw = Math.max(...samples.map((s) => s.yaw))
-        return maxYaw > baseline.yaw + 0.09
+        return maxYaw > baseline.yaw + 0.05
       }
       case 'lookUp': {
         const minPitch = Math.min(...samples.map((s) => s.pitch))
-        return minPitch < baseline.pitch - 0.07
+        return minPitch < baseline.pitch - 0.04
       }
       case 'smile': {
         const maxMouth = Math.max(...samples.map((s) => s.mouth))
-        return maxMouth > baseline.mouth * 1.18
+        return maxMouth > baseline.mouth * 1.1
       }
       default:
         return false
@@ -148,11 +160,17 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
   private async detectDescriptorWithRetry(attempts = 4): Promise<Float32Array | null> {
     if (!this.video) return null
     for (let i = 0; i < attempts; i++) {
-      const result = await faceapi
-        .detectSingleFace(this.video, DETECTOR_OPTIONS)
-        .withFaceLandmarks()
-        .withFaceDescriptor()
-      if (result) return result.descriptor
+      try {
+        const result = await faceapi
+          .detectSingleFace(this.video, DETECTOR_OPTIONS)
+          .withFaceLandmarks()
+          .withFaceDescriptor()
+        if (result) return result.descriptor
+      } catch (err) {
+        // A TF.js/WebGL failure here must not hang the caller forever —
+        // fail this attempt closed (treated as "no face found") and retry.
+        console.error('[RealFaceAuthProvider] detection failed', err)
+      }
       await delay(250)
     }
     return null

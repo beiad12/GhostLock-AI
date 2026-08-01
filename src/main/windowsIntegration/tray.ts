@@ -7,8 +7,7 @@ import icon from '../../../resources/icon.png?asset'
  */
 export function createTray(
   getMainWindow: () => BrowserWindow | null,
-  requestQuit: () => void,
-  getAuthState: () => boolean
+  requestQuit: () => void
 ): Tray {
   const tray = new Tray(nativeImage.createFromPath(icon))
   tray.setToolTip('GhostLock AI — running in the background')
@@ -20,27 +19,20 @@ export function createTray(
     win.focus()
   }
 
-  // Rebuilt right before it's shown so the Quit item's enabled state always
-  // reflects the current auth state — quitting is only possible once
-  // authenticated.
-  const rebuildMenu = (): void => {
-    const authenticated = getAuthState()
-    tray.setContextMenu(
-      Menu.buildFromTemplate([
-        { label: 'Open GhostLock AI', click: showWindow },
-        { type: 'separator' },
-        {
-          label: authenticated ? 'Quit GhostLock AI' : 'Quit (unlock required)',
-          enabled: authenticated,
-          click: requestQuit
-        }
-      ])
-    )
-  }
+  // Quit is deliberately ALWAYS available here, regardless of auth state.
+  // A lock screen with literally no escape hatch is a real hazard, not a
+  // security feature — if face recognition misfires, this is what stops
+  // it from being a permanent lockout. The in-window close button is still
+  // gated on authentication; this tray item is the guaranteed way out.
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Open GhostLock AI', click: showWindow },
+      { type: 'separator' },
+      { label: 'Quit GhostLock AI', click: requestQuit }
+    ])
+  )
 
   tray.on('click', showWindow)
-  tray.on('right-click', rebuildMenu)
-  rebuildMenu()
 
   app.on('before-quit', () => tray.destroy())
 

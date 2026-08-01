@@ -24,9 +24,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'cyberGreen',
   sensitivity: 70,
   // Tuned for RealFaceAuthProvider's euclidean-distance-based confidence —
-  // see its doc comment. Likely needs adjusting per camera/lighting once
-  // tested against a real face; expose it prominently in Settings.
-  confidenceThreshold: 55,
+  // see its doc comment. Deliberately lenient by default: a real first
+  // real-camera test showed the untested 55 default was too strict and
+  // rejected the legitimate enrolled user. Raise this in Settings once
+  // you've confirmed impostor faces are still rejected on your hardware.
+  confidenceThreshold: 40,
   animationIntensity: 'high',
   voiceEnabled: true,
   soundsEnabled: true,
