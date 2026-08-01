@@ -13,6 +13,12 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  # Never package previously-built installer binaries or CI config into the
+  # app itself — without this, a committed installer/*.exe gets bundled
+  # inside the next build's app.asar and roughly doubles its size.
+  - '!installer/**'
+  - '!dist/**'
+  - '!.github/**'
 asarUnpack:
   - resources/**
 win:
