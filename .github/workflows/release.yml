@@ -26,6 +26,13 @@ jobs:
       - run: npm run build
       - run: npx electron-builder --win --publish never
 
+      - name: Zip build artifacts
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -Filter *.exe | ForEach-Object {
+            Compress-Archive -Path $_.FullName -DestinationPath "dist/$($_.BaseName).zip" -CompressionLevel Optimal
+          }
+
       - name: Upload installer to release
         uses: softprops/action-gh-release@v2
         with:
@@ -33,4 +40,4 @@ jobs:
           name: GhostLock AI ${{ inputs.tag }}
           prerelease: true
           files: |
-            dist/*.exe
+            dist/*.zip
