@@ -75,7 +75,7 @@ export function EnrollScreen(): React.JSX.Element {
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--gl-background)] flex items-center justify-center">
       <HexOverlay className="absolute inset-0 opacity-30" />
-      <ParticleField density={50} className="absolute inset-0" />
+      <ParticleField density={35} className="absolute inset-0" />
 
       <div className="relative z-10 flex flex-col items-center gap-6">
         <div

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useSettingsStore } from '../store/settingsStore'
 
 interface Particle {
   x: number
@@ -13,15 +14,31 @@ interface ParticleFieldProps {
   className?: string
 }
 
+const TARGET_FPS = 30
+const FRAME_BUDGET_MS = 1000 / TARGET_FPS
+
 /**
  * Canvas particle field that drifts continuously and subtly repels away
  * from the mouse cursor, rendered behind the HUD panels.
+ *
+ * Capped to ~30fps (animation this subtle doesn't need 60) and scaled down
+ * by the "Animation Intensity" setting to keep idle CPU usage low — this
+ * component is mounted on nearly every screen, so its cost adds up.
  */
-export function ParticleField({ density = 70, className }: ParticleFieldProps): React.JSX.Element {
+export function ParticleField({
+  density = 70,
+  className
+}: ParticleFieldProps): React.JSX.Element | null {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouseRef = useRef({ x: -9999, y: -9999 })
+  const intensity = useSettingsStore((s) => s.settings.animationIntensity)
+
+  const effectiveDensity =
+    intensity === 'low' ? 0 : intensity === 'balanced' ? Math.round(density * 0.5) : density
 
   useEffect(() => {
+    if (effectiveDensity === 0) return
+
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -30,7 +47,7 @@ export function ParticleField({ density = 70, className }: ParticleFieldProps): 
     let width = (canvas.width = canvas.offsetWidth)
     let height = (canvas.height = canvas.offsetHeight)
 
-    const particles: Particle[] = Array.from({ length: density }, () => ({
+    const particles: Particle[] = Array.from({ length: effectiveDensity }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       vx: (Math.random() - 0.5) * 0.25,
@@ -42,7 +59,12 @@ export function ParticleField({ density = 70, className }: ParticleFieldProps): 
       getComputedStyle(document.documentElement).getPropertyValue('--gl-accent').trim() || '#00ff9c'
 
     let raf = 0
-    const render = (): void => {
+    let lastFrameTime = 0
+    const render = (now: number): void => {
+      raf = requestAnimationFrame(render)
+      if (now - lastFrameTime < FRAME_BUDGET_MS) return
+      lastFrameTime = now
+
       ctx.clearRect(0, 0, width, height)
       for (const p of particles) {
         const dx = p.x - mouseRef.current.x
@@ -64,7 +86,6 @@ export function ParticleField({ density = 70, className }: ParticleFieldProps): 
         ctx.globalAlpha = 0.5
         ctx.fill()
       }
-      raf = requestAnimationFrame(render)
     }
     raf = requestAnimationFrame(render)
 
@@ -84,7 +105,9 @@ export function ParticleField({ density = 70, className }: ParticleFieldProps): 
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('mousemove', handleMouseMove)
     }
-  }, [density])
+  }, [effectiveDensity])
+
+  if (effectiveDensity === 0) return null
 
   return <canvas ref={canvasRef} className={className} />
 }

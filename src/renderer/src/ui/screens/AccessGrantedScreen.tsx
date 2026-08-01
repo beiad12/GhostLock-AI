@@ -21,7 +21,7 @@ export function AccessGrantedScreen(): React.JSX.Element {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--gl-background)] flex items-center justify-center">
-      <ParticleField density={110} className="absolute inset-0" />
+      <ParticleField density={45} className="absolute inset-0" />
       <motion.div
         className="absolute inset-0"
         initial={{ opacity: 0 }}

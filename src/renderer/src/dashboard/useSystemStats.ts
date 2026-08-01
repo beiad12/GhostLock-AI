@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { SystemStatsSnapshot } from '../../../main/windowsIntegration/systemStats'
 
 /** Polls the main process for live CPU/RAM/disk/battery telemetry. */
-export function useSystemStats(intervalMs = 2500): SystemStatsSnapshot | null {
+export function useSystemStats(intervalMs = 4000): SystemStatsSnapshot | null {
   const [stats, setStats] = useState<SystemStatsSnapshot | null>(null)
 
   useEffect(() => {

@@ -77,7 +77,7 @@ export function FaceScanScreen(): React.JSX.Element {
 
       const metricsInterval = window.setInterval(() => {
         setMetrics(provider.getLatestMetrics())
-      }, 120)
+      }, 250)
 
       setPhase('analyzing')
       await delay(1400)
@@ -160,7 +160,7 @@ export function FaceScanScreen(): React.JSX.Element {
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--gl-background)]">
       <HexOverlay className="absolute inset-0 opacity-30" />
-      <ParticleField density={60} className="absolute inset-0" />
+      <ParticleField density={40} className="absolute inset-0" />
       <BinaryRain columns={16} className="absolute inset-0" />
 
       <div className="relative z-10 h-full w-full flex items-center justify-center gap-10 px-10">

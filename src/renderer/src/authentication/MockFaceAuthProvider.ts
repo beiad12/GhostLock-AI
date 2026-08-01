@@ -10,7 +10,7 @@ import type { FaceMetrics, LivenessChallengeKind } from '../types/auth'
  * swap-in contract the real engine will implement.
  */
 export class MockFaceAuthProvider implements FaceAuthProvider {
-  private rafId: number | null = null
+  private tickIntervalId: number | null = null
   private metrics: FaceMetrics | null = null
   private startTime = 0
   private faceDetected = false
@@ -25,16 +25,18 @@ export class MockFaceAuthProvider implements FaceAuthProvider {
       this.faceDetected = true
     }, 900)
 
-    const tick = (): void => {
+    // Consumers only poll every ~250ms, so recomputing at 60fps via
+    // requestAnimationFrame would be pure wasted CPU; a plain interval at
+    // the consumer's cadence is enough for the sine-wave jitter to read as
+    // "live" without burning a frame budget in the background.
+    this.tickIntervalId = window.setInterval(() => {
       this.metrics = this.faceDetected ? this.computeSimulatedMetrics() : null
-      this.rafId = requestAnimationFrame(tick)
-    }
-    this.rafId = requestAnimationFrame(tick)
+    }, 200)
   }
 
   async stopDetection(): Promise<void> {
-    if (this.rafId !== null) cancelAnimationFrame(this.rafId)
-    this.rafId = null
+    if (this.tickIntervalId !== null) window.clearInterval(this.tickIntervalId)
+    this.tickIntervalId = null
     this.metrics = null
   }
 

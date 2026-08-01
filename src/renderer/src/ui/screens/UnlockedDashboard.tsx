@@ -38,7 +38,7 @@ export function UnlockedDashboard(): React.JSX.Element {
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--gl-background)]">
       <HexOverlay className="absolute inset-0 opacity-20" />
-      <ParticleField density={35} className="absolute inset-0" />
+      <ParticleField density={25} className="absolute inset-0" />
 
       <div className="relative z-10 h-full w-full p-8 flex flex-col">
         <div className="flex items-center justify-between mb-8">

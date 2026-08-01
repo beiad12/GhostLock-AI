@@ -43,7 +43,7 @@ export function BootScreen({ onComplete }: BootScreenProps): React.JSX.Element {
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--gl-background)] flex items-center justify-center">
       <HexOverlay className="absolute inset-0 opacity-40" />
-      <ParticleField density={50} className="absolute inset-0" />
+      <ParticleField density={35} className="absolute inset-0" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
