@@ -19,6 +19,29 @@ files:
   - '!installer/**'
   - '!dist/**'
   - '!.github/**'
+  # electron-vite fully bundles every renderer dependency (React,
+  # framer-motion, zustand, react-router-dom, @vladmandic/face-api, ...)
+  # into out/renderer. Only main/preload use externalizeDepsPlugin and need
+  # their real raw packages at runtime (systeminformation, @electron-toolkit);
+  # everything below is a dead-weight duplicate of code already compiled
+  # into out/renderer (face-api's own package alone is ~23MB on top of the
+  # ~2.6MB Vite already produced from it; react-dom alone is another ~7MB).
+  # Pure negations only — mixing in positive re-include patterns switches
+  # electron-builder's "files" into allowlist mode and silently drops the
+  # default out/**, package.json, etc. inclusion.
+  - '!node_modules/@vladmandic/**'
+  - '!node_modules/framer-motion/**'
+  - '!node_modules/motion-dom/**'
+  - '!node_modules/motion-utils/**'
+  - '!node_modules/react/**'
+  - '!node_modules/react-dom/**'
+  - '!node_modules/react-router/**'
+  - '!node_modules/react-router-dom/**'
+  - '!node_modules/cookie/**'
+  - '!node_modules/set-cookie-parser/**'
+  - '!node_modules/clsx/**'
+  - '!node_modules/zustand/**'
+  - '!node_modules/tslib/**'
 asarUnpack:
   - resources/**
   # Face-recognition model weights are fetched at runtime via a relative
