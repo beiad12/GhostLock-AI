@@ -20,10 +20,19 @@ export interface FaceAuthProvider {
   stopDetection(): Promise<void>
   /** Returns the latest computed face metrics, or null if no face is present. */
   getLatestMetrics(): FaceMetrics | null
-  /** Generates a biometric embedding from the current frame for enrollment. */
+  /**
+   * Generates a biometric embedding from the current frame — used both for
+   * enrollment and to capture the one live descriptor a match is judged
+   * against. Deliberately NOT "matchEmbedding(stored)": capturing once and
+   * comparing the result against every stored descriptor in a user's
+   * gallery (via `matchConfidence`) avoids re-triggering the camera/model
+   * once per stored descriptor, which would be both slow and prone to
+   * comparing against inconsistent live frames.
+   */
   captureEmbedding(): Promise<Float32Array>
-  /** Compares the current live face against a stored embedding. */
-  matchEmbedding(stored: Float32Array): Promise<{ confidence: number }>
   /** Evaluates whether the current live face satisfies a liveness challenge. */
   evaluateLivenessChallenge(kind: LivenessChallengeKind): Promise<boolean>
+  /** Feeds the HUD's identity-confidence gauge after the caller computes a
+   * match result (via `matchConfidence`) against the current live capture. */
+  reportIdentityConfidence(confidence: number): void
 }

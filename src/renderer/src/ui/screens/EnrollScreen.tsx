@@ -80,8 +80,12 @@ export function EnrollScreen(): React.JSX.Element {
             'Too many angles failed to capture a face — try again with better lighting.'
           )
         }
-        const embedding = averageDescriptors(descriptorsRef.current)
-        await enrollUser(name.trim() || 'Operator', embedding)
+        // Store each angle's descriptor separately rather than averaging
+        // them — averaging very different head poses together dilutes the
+        // representation and pulls it away from what a normal frontal live
+        // scan looks like. Matching instead compares against every stored
+        // descriptor and keeps the best result.
+        await enrollUser(name.trim() || 'Operator', descriptorsRef.current)
         setStep('done')
         if (soundsEnabled) sfx.accessGranted()
         await delay(1200)
@@ -249,15 +253,4 @@ export function EnrollScreen(): React.JSX.Element {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
-}
-
-/** Component-wise mean of several 128-d descriptors into one embedding. */
-function averageDescriptors(descriptors: Float32Array[]): Float32Array {
-  const length = descriptors[0].length
-  const sum = new Float32Array(length)
-  for (const d of descriptors) {
-    for (let i = 0; i < length; i++) sum[i] += d[i]
-  }
-  for (let i = 0; i < length; i++) sum[i] /= descriptors.length
-  return sum
 }

@@ -7,7 +7,7 @@ import { RadarSweep } from '../../animations/RadarSweep'
 import { HexOverlay } from '../../animations/HexOverlay'
 import { ScanLaser } from '../../animations/ScanLaser'
 import { ConfidenceGauge } from '../components/ConfidenceGauge'
-import { RealFaceAuthProvider } from '../../authentication/RealFaceAuthProvider'
+import { RealFaceAuthProvider, matchConfidence } from '../../authentication/RealFaceAuthProvider'
 import type { FaceAuthProvider } from '../../authentication/FaceAuthProvider'
 import type { FaceMetrics, ScanPhase } from '../../types/auth'
 import { generateChallengeSequence } from '../../liveness/challenges'
@@ -121,18 +121,24 @@ export function FaceScanScreen(): React.JSX.Element {
       setPhase('matching')
       let bestName: string | null = null
       let bestConfidence = 0
-      if (enrolledUsers.length === 0) {
-        bestConfidence = 0
-      } else {
+      if (enrolledUsers.length > 0) {
+        // Capture the live face ONCE, then compare it against every stored
+        // descriptor in each user's enrollment gallery (one per captured
+        // angle) and keep the best result — instead of re-triggering the
+        // camera/model once per stored descriptor, which would be slow and
+        // could compare against inconsistent live frames each time.
+        const live = await provider.captureEmbedding()
         for (const user of enrolledUsers) {
-          const stored = decodeEmbedding(user.embeddingBase64)
-          const { confidence } = await provider.matchEmbedding(stored)
-          if (confidence > bestConfidence) {
-            bestConfidence = confidence
-            bestName = user.name
+          for (const storedBase64 of user.embeddingsBase64) {
+            const confidence = matchConfidence(live, decodeEmbedding(storedBase64))
+            if (confidence > bestConfidence) {
+              bestConfidence = confidence
+              bestName = user.name
+            }
           }
         }
       }
+      provider.reportIdentityConfidence(bestConfidence)
       window.clearInterval(metricsInterval)
       if (cancelled) return
 

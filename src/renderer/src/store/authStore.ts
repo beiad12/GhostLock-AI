@@ -14,7 +14,7 @@ interface AuthStore {
   attemptLog: AttemptLogEntry[]
   failedAttemptStreak: number
   init: (force?: boolean) => Promise<void>
-  enrollUser: (name: string, embedding: Float32Array) => Promise<EnrolledUser>
+  enrollUser: (name: string, embeddings: Float32Array[]) => Promise<EnrolledUser>
   removeUser: (id: string) => Promise<void>
   recordAttempt: (entry: Omit<AttemptLogEntry, 'id' | 'timestamp'>) => Promise<void>
   resetFailedStreak: () => void
@@ -32,12 +32,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ enrolledUsers: users, attemptLog: log, initialized: true })
   },
 
-  enrollUser: async (name, embedding) => {
+  enrollUser: async (name, embeddings) => {
     const user: EnrolledUser = {
       id: crypto.randomUUID(),
       name,
       createdAt: Date.now(),
-      embeddingBase64: await encodeEmbedding(embedding)
+      embeddingsBase64: await Promise.all(embeddings.map(encodeEmbedding))
     }
     // GhostLock AI is a single-face device lock, not a multi-user directory:
     // enrolling a new profile replaces whichever one was there before.

@@ -91,19 +91,11 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
     return descriptor
   }
 
-  async matchEmbedding(stored: Float32Array): Promise<{ confidence: number }> {
-    const descriptor = await this.detectDescriptorWithRetry()
-    if (!descriptor) {
-      this.lastIdentityConfidence = 0
-      return { confidence: 0 }
-    }
-    const distance = faceapi.euclideanDistance(descriptor, stored)
-    // Standard face-api.js accept boundary is ~0.6 euclidean distance;
-    // map that onto our 0-100 confidence scale with some headroom either
-    // side. Needs real-world tuning per device/lighting — see README.
-    const confidence = clamp(0, 100, (1 - distance / 1.2) * 100)
+  /** Lets the caller feed the HUD confidence gauge after comparing a
+   * captured descriptor against a user's stored gallery via
+   * `matchConfidence` — this class no longer does that comparison itself. */
+  reportIdentityConfidence(confidence: number): void {
     this.lastIdentityConfidence = confidence
-    return { confidence }
   }
 
   async evaluateLivenessChallenge(kind: LivenessChallengeKind): Promise<boolean> {
@@ -237,4 +229,19 @@ function clamp(min: number, max: number, value: number): number {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+/**
+ * Pure euclidean-distance-to-confidence mapping — no camera, no async, just
+ * comparing two already-captured descriptors. Callers loop this over every
+ * descriptor in a user's enrollment gallery and take the best result,
+ * rather than re-capturing the camera once per stored descriptor.
+ *
+ * Standard face-api.js accept boundary is ~0.6 euclidean distance; mapped
+ * onto our 0-100 confidence scale with some headroom either side. Needs
+ * real-world tuning per device/lighting — see README.
+ */
+export function matchConfidence(live: Float32Array, stored: Float32Array): number {
+  const distance = faceapi.euclideanDistance(live, stored)
+  return clamp(0, 100, (1 - distance / 1.2) * 100)
 }

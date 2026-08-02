@@ -59,21 +59,16 @@ export class MockFaceAuthProvider implements FaceAuthProvider {
     return embedding
   }
 
-  async matchEmbedding(stored: Float32Array): Promise<{ confidence: number }> {
-    await delay(400 + Math.random() * 300)
-    // Mock: high, slightly-varying confidence so the "granted" path feels
-    // alive. This does NOT compare against the live face — any detected
-    // face currently matches the enrolled profile. Real per-identity
-    // rejection requires the milestone 2 engine (see FaceAuthProvider.ts).
-    void stored
-    const confidence = 88 + Math.random() * 11
-    return { confidence: Math.min(99.8, confidence) }
-  }
-
   async evaluateLivenessChallenge(kind: LivenessChallengeKind): Promise<boolean> {
     void kind
     await delay(1100 + Math.random() * 700)
     return Math.random() > 0.08
+  }
+
+  reportIdentityConfidence(confidence: number): void {
+    void confidence
+    // No-op: the mock's HUD gauge already fakes a plausible value in
+    // computeSimulatedMetrics, independent of any real match result.
   }
 
   private computeSimulatedMetrics(): FaceMetrics {

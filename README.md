@@ -39,12 +39,21 @@ change to swap between them, or to a more accurate engine later.
 Built without ever seeing a real face, so treat these as starting points to
 tune, not finished calibration:
 
-- **Confidence threshold.** `matchEmbedding` maps euclidean distance onto a
-  0–100 scale (`confidence = (1 - distance / 1.2) * 100`); the default
-  `Confidence Threshold` setting (55) assumes that mapping is roughly right.
-  If genuine you keeps getting rejected, lower it; if strangers get in,
-  raise it. This is real math, not a placeholder — but the specific numbers
-  need real-world data.
+- **Confidence threshold.** `matchConfidence` (`RealFaceAuthProvider.ts`)
+  maps euclidean distance onto a 0–100 scale
+  (`confidence = (1 - distance / 1.2) * 100`); the default `Confidence
+  Threshold` setting (40) assumes that mapping is roughly right. If genuine
+  you keeps getting rejected, lower it; if strangers get in, raise it. This
+  is real math, not a placeholder — but the specific numbers need
+  real-world data.
+- **Enrollment gallery, not an average.** Each of the 6 capture angles
+  (left/right/up/down/smile/blink) is stored as its own descriptor
+  (`EnrolledUser.embeddingsBase64: string[]`), and matching compares the
+  live face against every stored descriptor and keeps the best result.
+  An earlier version averaged all 6 into one embedding, which turned out
+  to hurt matching — averaging poses as different as a hard head-turn and
+  a frontal smile pulls the "canonical" embedding away from what a normal
+  frontal live scan actually looks like. Gallery matching avoids that.
 - **Liveness thresholds** (`RealFaceAuthProvider.evaluateLivenessChallenge`)
   use fixed deltas (e.g. blink = EAR drops below 72% of baseline) that have
   never been checked against an actual blink/head-turn/smile. They may be

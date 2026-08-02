@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { RealFaceAuthProvider } from './RealFaceAuthProvider'
+import { RealFaceAuthProvider, matchConfidence } from './RealFaceAuthProvider'
 import { decodeEmbedding } from './vaultRepository'
 import { useAuthStore } from '../store/authStore'
 import { useSettingsStore } from '../store/settingsStore'
@@ -59,8 +59,20 @@ export function useUnlockedGuard(active: boolean, intervalMs = 6000): void {
         // isn't an intruder, and matching against nothing always fails.
         if (!provider.getLatestMetrics()) return
 
-        const stored = decodeEmbedding(enrolledUsers[0].embeddingBase64)
-        const { confidence } = await provider.matchEmbedding(stored)
+        let confidence = 0
+        try {
+          const live = await provider.captureEmbedding()
+          confidence = Math.max(
+            0,
+            ...enrolledUsers[0].embeddingsBase64.map((b64) =>
+              matchConfidence(live, decodeEmbedding(b64))
+            )
+          )
+        } catch {
+          // Transient capture failure — skip this cycle rather than count
+          // it as a mismatch.
+          return
+        }
         if (cancelled) return
         if (confidence < confidenceThreshold) {
           consecutiveLowConfidence += 1

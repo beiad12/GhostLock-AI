@@ -30,11 +30,19 @@ export interface EnrolledUser {
   name: string
   createdAt: number
   /**
-   * Base64-encoded biometric embedding. Never a raw image — and this record
-   * is only ever persisted as part of an AES-256-GCM encrypted vault file
-   * (see `authentication/vaultRepository.ts`), never in plaintext on disk.
+   * Base64-encoded biometric embeddings, one per captured enrollment angle
+   * (left/right/up/down/smile/blink) — never a raw image, and only ever
+   * persisted as part of an AES-256-GCM encrypted vault file (see
+   * `authentication/vaultRepository.ts`), never in plaintext on disk.
+   *
+   * Stored as a gallery (one descriptor per pose) rather than a single
+   * averaged embedding: averaging descriptors from very different head
+   * angles together dilutes the representation and pulls it away from
+   * what a normal frontal live scan looks like, making matching *worse*.
+   * At match time the live descriptor is compared against every entry
+   * here and the best (closest) one wins.
    */
-  embeddingBase64: string
+  embeddingsBase64: string[]
 }
 
 export interface AttemptLogEntry {
