@@ -44,7 +44,13 @@ export async function loadEnrolledUsers(): Promise<EnrolledUser[]> {
   const raw = await window.api.vault.read(USERS_FILE)
   if (!raw) return []
   try {
-    return await decryptJson<EnrolledUser[]>(JSON.parse(raw), key)
+    const users = await decryptJson<EnrolledUser[]>(JSON.parse(raw), key)
+    // Drop any record saved under an older, incompatible shape (e.g. the
+    // pre-gallery single `embeddingBase64` string) instead of letting a
+    // malformed profile throw deep inside the scan flow. Enrolling again
+    // is a much better experience than a cryptic "Recognition engine
+    // error" from `.map()` on undefined.
+    return users.filter((u) => Array.isArray(u.embeddingsBase64) && u.embeddingsBase64.length > 0)
   } catch {
     return []
   }
