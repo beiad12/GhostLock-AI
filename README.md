@@ -109,11 +109,37 @@ Framer Motion and CSS keyframes for 60fps GPU-accelerated motion.
   touching disk, using a per-install key stored in Electron's `userData`
   directory — never in web-reachable storage.
 - Raw images are never persisted.
-- The app makes **zero network requests** by design — no cloud dependency,
-  no telemetry.
+- The app makes **zero network requests by default** — no cloud dependency,
+  no telemetry. The one opt-in exception is described below.
 - Profile export/import bundles the vault key with the ciphertext for
   portability, so treat an exported `.glvault` file as a secret (same as a
   password-manager export).
+
+### Optional cloud verification (Mistral)
+
+Settings → **Cloud AI Verification** lets you paste in your own [Mistral
+API key](https://console.mistral.ai) to add a secondary anti-spoofing check
+on top of local face matching. This is **off by default** and is the only
+feature in GhostLock AI that talks to the network:
+
+- It only runs when local matching already passed, and only if you've
+  enabled the toggle and saved a key.
+- The key is AES-256-GCM encrypted in the vault (same as face data), never
+  written to the repo or to plain settings storage.
+- The call happens from Electron's **main process**, not the renderer — the
+  renderer's CSP still has no `connect-src` exception, so it can't reach the
+  network on its own.
+- GhostLock AI doesn't persist a reference photo, so this can't do
+  "same-person" identity matching — it sends the live frame to Mistral's
+  vision model (`mistral-small-latest`) and asks it to judge whether the
+  frame shows a live person versus an obvious spoof (printed photo, a
+  phone/monitor held up, a mask).
+- **It fails open.** A bad key, no internet, a timeout, or an API error is
+  swallowed and the local match result stands — after the earlier lockout
+  incident (see commit history), nothing about optional network calls is
+  allowed to be able to block a real user from getting in. Only an explicit,
+  confident "this looks like a spoof" verdict adds an extra denial on top of
+  the local result.
 
 ## Windows integration
 

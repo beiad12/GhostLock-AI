@@ -11,7 +11,7 @@ import { RealFaceAuthProvider, matchConfidence } from '../../authentication/Real
 import type { FaceAuthProvider } from '../../authentication/FaceAuthProvider'
 import type { FaceMetrics, ScanPhase } from '../../types/auth'
 import { generateChallengeSequence } from '../../liveness/challenges'
-import { decodeEmbedding } from '../../authentication/vaultRepository'
+import { decodeEmbedding, loadMistralApiKey } from '../../authentication/vaultRepository'
 import { useAuthStore } from '../../store/authStore'
 import { useSettingsStore } from '../../store/settingsStore'
 import { useFlowStore } from '../../store/flowStore'
@@ -31,6 +31,7 @@ export function FaceScanScreen(): React.JSX.Element {
   const cameraDeviceId = useSettingsStore((s) => s.settings.cameraDeviceId)
   const confidenceThreshold = useSettingsStore((s) => s.settings.confidenceThreshold)
   const soundsEnabled = useSettingsStore((s) => s.settings.soundsEnabled)
+  const cloudVerificationEnabled = useSettingsStore((s) => s.settings.cloudVerificationEnabled)
   const { videoRef, ready, error } = useCamera(cameraDeviceId)
 
   const enrolledUsers = useAuthStore((s) => s.enrolledUsers)
@@ -142,11 +143,36 @@ export function FaceScanScreen(): React.JSX.Element {
       window.clearInterval(metricsInterval)
       if (cancelled) return
 
-      const success = bestConfidence >= confidenceThreshold && bestName !== null
-      const denialReason =
+      let success = bestConfidence >= confidenceThreshold && bestName !== null
+      let denialReason =
         enrolledUsers.length === 0
           ? 'No face is enrolled on this device yet'
           : `Confidence ${bestConfidence.toFixed(1)}% below threshold ${confidenceThreshold}% — try Settings → Recognition if this keeps happening to you`
+
+      // Optional secondary anti-spoofing check via Mistral's vision model —
+      // only runs when the local match already passed and the user has
+      // opted in with their own API key. This is advisory only: a network
+      // failure, timeout, or missing key must never turn a real accept into
+      // a denial, so any error here is swallowed and the local result
+      // stands. Only an explicit, confident "this looks like a spoof"
+      // verdict from Mistral adds an extra deny on top.
+      if (success && cloudVerificationEnabled) {
+        try {
+          const apiKey = await loadMistralApiKey()
+          if (apiKey) {
+            const frame = captureFrameDataUrl(videoRef.current!)
+            const result = await window.api.mistral.verify(apiKey, frame)
+            if ('live' in result && !result.live && result.confidence >= 60) {
+              success = false
+              denialReason = `Cloud liveness check flagged a possible spoof: ${result.reasoning || 'no reason given'}`
+            }
+          }
+        } catch (err) {
+          console.warn('[FaceScanScreen] Mistral cloud check failed, ignoring', err)
+        }
+        if (cancelled) return
+      }
+
       await recordAttempt({
         success,
         userName: success ? bestName : null,
@@ -303,7 +329,9 @@ export function FaceScanScreen(): React.JSX.Element {
             <div>Enrolled Face: {enrolledUsers.length > 0 ? 'YES' : 'NONE'}</div>
             <div>Threshold: {confidenceThreshold}%</div>
             <div>Encryption: AES-256 ACTIVE</div>
-            <div>Network: OFFLINE (BY DESIGN)</div>
+            <div>
+              Network: {cloudVerificationEnabled ? 'CLOUD CHECK ENABLED' : 'OFFLINE (BY DESIGN)'}
+            </div>
           </div>
         </div>
       </div>
@@ -328,4 +356,15 @@ function CornerBracket({ corner }: { corner: 'tl' | 'tr' | 'bl' | 'br' }): React
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+/** Snapshots the current video frame as a JPEG data URL for the optional cloud check. */
+function captureFrameDataUrl(video: HTMLVideoElement): string {
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas context unavailable')
+  ctx.drawImage(video, 0, 0)
+  return canvas.toDataURL('image/jpeg', 0.85)
 }

@@ -18,6 +18,7 @@ export interface AppSettings {
   language: Language
   maxFailedAttempts: number
   autoLockMinutes: number
+  cloudVerificationEnabled: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -38,5 +39,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cameraDeviceId: null,
   language: 'en',
   maxFailedAttempts: 3,
-  autoLockMinutes: 5
+  autoLockMinutes: 5,
+  // Off by default: this is the one feature that sends a webcam frame off
+  // the device (to Mistral's API) and requires the user's own API key —
+  // see Settings -> Cloud AI Verification.
+  cloudVerificationEnabled: false
 }

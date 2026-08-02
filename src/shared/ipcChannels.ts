@@ -10,5 +10,6 @@ export const IPC = {
   HIDE_TO_TRAY: 'window:hide-to-tray',
   QUIT_APP: 'app:quit',
   APP_VERSION: 'app:version',
-  SET_AUTH_STATE: 'app:set-auth-state'
+  SET_AUTH_STATE: 'app:set-auth-state',
+  MISTRAL_VERIFY: 'mistral:verify'
 } as const

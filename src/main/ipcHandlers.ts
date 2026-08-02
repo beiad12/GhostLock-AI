@@ -3,6 +3,10 @@ import { IPC } from '../shared/ipcChannels'
 import { readVaultFile, writeVaultFile } from './windowsIntegration/vaultStorage'
 import { getAutoLaunchEnabled, setAutoLaunchEnabled } from './windowsIntegration/autoLaunch'
 import { getSystemStats } from './windowsIntegration/systemStats'
+import {
+  verifyLivenessWithMistral,
+  type MistralLivenessResult
+} from './windowsIntegration/mistralClient'
 import { app } from 'electron'
 
 export function registerIpcHandlers(
@@ -53,4 +57,22 @@ export function registerIpcHandlers(
   ipcMain.handle(IPC.SET_AUTH_STATE, (_event, authenticated: boolean) => {
     setAuthState(authenticated)
   })
+
+  // Never throws to the renderer — a bad key, no internet, or a Mistral
+  // outage must never be able to block a real user from unlocking their own
+  // machine. Failures come back as { error } instead of a rejected promise.
+  ipcMain.handle(
+    IPC.MISTRAL_VERIFY,
+    async (
+      _event,
+      apiKey: string,
+      imageDataUrl: string
+    ): Promise<MistralLivenessResult | { error: string }> => {
+      try {
+        return await verifyLivenessWithMistral(apiKey, imageDataUrl)
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : 'Unknown Mistral error' }
+      }
+    }
+  )
 }

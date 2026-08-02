@@ -10,6 +10,7 @@ import type { EnrolledUser, AttemptLogEntry } from '../types/auth'
 const KEY_FILE = 'key.b64'
 const USERS_FILE = 'users.enc.json'
 const LOG_FILE = 'attempts.enc.json'
+const MISTRAL_KEY_FILE = 'mistral.enc.json'
 
 let cachedKey: string | null = null
 
@@ -85,4 +86,31 @@ export async function saveAttemptLog(entries: AttemptLogEntry[]): Promise<void> 
   const key = await getOrCreateVaultKey()
   const payload = await encryptJson(entries, key)
   await window.api.vault.write(LOG_FILE, JSON.stringify(payload))
+}
+
+/**
+ * Optional Mistral API key for the cloud liveness secondary-check. Stored
+ * AES-256-GCM encrypted alongside face embeddings/logs — same treatment as
+ * any other secret in the vault — never in plain settings storage.
+ */
+export async function saveMistralApiKey(apiKey: string): Promise<void> {
+  const key = await getOrCreateVaultKey()
+  const payload = await encryptJson({ apiKey }, key)
+  await window.api.vault.write(MISTRAL_KEY_FILE, JSON.stringify(payload))
+}
+
+export async function loadMistralApiKey(): Promise<string | null> {
+  const key = await getOrCreateVaultKey()
+  const raw = await window.api.vault.read(MISTRAL_KEY_FILE)
+  if (!raw) return null
+  try {
+    const { apiKey } = await decryptJson<{ apiKey: string }>(JSON.parse(raw), key)
+    return apiKey || null
+  } catch {
+    return null
+  }
+}
+
+export async function clearMistralApiKey(): Promise<void> {
+  await window.api.vault.write(MISTRAL_KEY_FILE, '')
 }

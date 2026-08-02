@@ -26,6 +26,13 @@ const api = {
     quit: (): Promise<void> => ipcRenderer.invoke(IPC.QUIT_APP),
     setAuthState: (authenticated: boolean): Promise<void> =>
       ipcRenderer.invoke(IPC.SET_AUTH_STATE, authenticated)
+  },
+  mistral: {
+    verify: (
+      apiKey: string,
+      imageDataUrl: string
+    ): Promise<{ live: boolean; confidence: number; reasoning: string } | { error: string }> =>
+      ipcRenderer.invoke(IPC.MISTRAL_VERIFY, apiKey, imageDataUrl)
   }
 }
 

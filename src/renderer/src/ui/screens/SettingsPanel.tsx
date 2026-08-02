@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSettingsStore } from '../../store/settingsStore'
 import { useAuthStore } from '../../store/authStore'
@@ -8,6 +8,11 @@ import { Toggle } from '../components/Toggle'
 import { SliderField } from '../components/SliderField'
 import { useCameraDevices } from '../../settings/useCameraDevices'
 import { exportProfileBundle, importProfileBundle } from '../../settings/profileBackup'
+import {
+  saveMistralApiKey,
+  loadMistralApiKey,
+  clearMistralApiKey
+} from '../../authentication/vaultRepository'
 import type { AnimationIntensity, Language } from '../../types/settings'
 
 export function SettingsPanel(): React.JSX.Element {
@@ -20,6 +25,33 @@ export function SettingsPanel(): React.JSX.Element {
   const cameras = useCameraDevices()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<string | null>(null)
+  const [mistralKeyInput, setMistralKeyInput] = useState('')
+  const [mistralKeySaved, setMistralKeySaved] = useState(false)
+  const [mistralStatus, setMistralStatus] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    loadMistralApiKey().then((key) => {
+      setMistralKeySaved(!!key)
+      setMistralKeyInput('')
+    })
+  }, [open])
+
+  async function handleSaveMistralKey(): Promise<void> {
+    const trimmed = mistralKeyInput.trim()
+    if (!trimmed) return
+    await saveMistralApiKey(trimmed)
+    setMistralKeySaved(true)
+    setMistralKeyInput('')
+    setMistralStatus('API key saved (encrypted)')
+  }
+
+  async function handleClearMistralKey(): Promise<void> {
+    await clearMistralApiKey()
+    update('cloudVerificationEnabled', false)
+    setMistralKeySaved(false)
+    setMistralStatus('API key removed')
+  }
 
   async function handleAutoStartupToggle(next: boolean): Promise<void> {
     update('autoStartup', next)
@@ -134,6 +166,61 @@ export function SettingsPanel(): React.JSX.Element {
                 suffix=" min"
                 onChange={(v) => update('autoLockMinutes', v)}
               />
+            </Section>
+
+            <Section title="Cloud AI Verification (Optional)">
+              <div className="gl-mono text-xs mb-3" style={{ color: 'var(--gl-text-muted)' }}>
+                Adds Mistral&apos;s vision AI as a secondary anti-spoofing check on top of local
+                face matching. This is the only feature in GhostLock AI that sends a webcam frame
+                over the network — off by default, and only runs if you paste in your own API key
+                below. A network error or bad key never blocks you from unlocking.
+              </div>
+              <Toggle
+                checked={settings.cloudVerificationEnabled}
+                onChange={(v) => update('cloudVerificationEnabled', v)}
+                label="Enable Cloud Verification"
+              />
+              <div className="mt-3">
+                <div className="gl-mono text-xs mb-1" style={{ color: 'var(--gl-text-secondary)' }}>
+                  {mistralKeySaved ? 'API key on file (encrypted)' : 'No API key set'}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={mistralKeyInput}
+                    onChange={(e) => setMistralKeyInput(e.target.value)}
+                    placeholder="Paste Mistral API key"
+                    autoComplete="off"
+                    className="flex-1 bg-black/40 border rounded-lg px-3 py-2 gl-mono text-xs"
+                    style={{
+                      borderColor: 'var(--gl-glass-border)',
+                      color: 'var(--gl-text-primary)'
+                    }}
+                  />
+                  <button
+                    onClick={handleSaveMistralKey}
+                    disabled={!mistralKeyInput.trim()}
+                    className="rounded-lg px-3 py-2 gl-mono text-xs uppercase border disabled:opacity-40"
+                    style={{ borderColor: 'var(--gl-glass-border)', color: 'var(--gl-accent)' }}
+                  >
+                    Save
+                  </button>
+                  {mistralKeySaved && (
+                    <button
+                      onClick={handleClearMistralKey}
+                      className="rounded-lg px-3 py-2 gl-mono text-xs uppercase border"
+                      style={{ borderColor: 'var(--gl-glass-border)', color: 'var(--gl-danger)' }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {mistralStatus && (
+                  <div className="gl-mono text-xs mt-2" style={{ color: 'var(--gl-text-muted)' }}>
+                    {mistralStatus}
+                  </div>
+                )}
+              </div>
             </Section>
 
             <Section title="Camera">
