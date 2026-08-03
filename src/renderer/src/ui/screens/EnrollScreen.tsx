@@ -23,6 +23,16 @@ const CAPTURE_STEPS: { step: EnrollStep; label: string }[] = [
   { step: 'blink', label: 'Blink naturally' }
 ]
 
+// Each angle is no longer a single snapshot — it's a short burst of frames
+// while you hold the pose, so the stored gallery covers dozens of slightly
+// different instants of your face (micro-movement, blinks, lighting) per
+// angle instead of one frame each. This is what actually improves
+// recognition: more, varied real samples of your face beat one "perfect"
+// shot per pose.
+const BURST_DURATION_MS = 1800
+const BURST_INTERVAL_MS = 150
+const MIN_FRAMES_PER_ANGLE = 3
+
 export function EnrollScreen(): React.JSX.Element {
   const cameraDeviceId = useSettingsStore((s) => s.settings.cameraDeviceId)
   const soundsEnabled = useSettingsStore((s) => s.settings.soundsEnabled)
@@ -36,9 +46,12 @@ export function EnrollScreen(): React.JSX.Element {
   const [captureIndex, setCaptureIndex] = useState(0)
   const [capturedAngles, setCapturedAngles] = useState<string[]>([])
   const [enrollError, setEnrollError] = useState<string | null>(null)
-  // A real descriptor captured per angle (not just once at the end) —
-  // averaging several poses into one embedding makes matching more robust
-  // to head angle/lighting than a single snapshot.
+  const [isCapturing, setIsCapturing] = useState(false)
+  const [burstProgress, setBurstProgress] = useState({ done: 0, total: 0 })
+  // Every valid frame from every angle's burst lands here as its own
+  // gallery descriptor — not averaged, not deduplicated. More real samples
+  // of the face (across pose, blink, and lighting micro-variation) is what
+  // makes live matching more robust, not one "best" shot per pose.
   const descriptorsRef = useRef<Float32Array[]>([])
 
   useEffect(() => {
@@ -60,13 +73,23 @@ export function EnrollScreen(): React.JSX.Element {
     setEnrollError(null)
     const provider = providerRef.current!
 
-    try {
-      const descriptor = await provider.captureEmbedding()
-      descriptorsRef.current.push(descriptor)
-    } catch {
-      // A single missed angle isn't fatal as long as enough others land —
-      // checked against the minimum below once all steps are done.
+    setIsCapturing(true)
+    setBurstProgress({ done: 0, total: 0 })
+    const frames = await provider.captureEmbeddingBurst(
+      BURST_DURATION_MS,
+      BURST_INTERVAL_MS,
+      (done, total) => setBurstProgress({ done, total })
+    )
+    setIsCapturing(false)
+
+    if (frames.length < MIN_FRAMES_PER_ANGLE) {
+      setEnrollError(
+        `Only caught ${frames.length} clear frame${frames.length === 1 ? '' : 's'} — hold the pose steady in good lighting and try this angle again.`
+      )
+      return
     }
+
+    descriptorsRef.current.push(...frames)
     setCapturedAngles((prev) => [...prev, current.step])
 
     if (captureIndex + 1 < CAPTURE_STEPS.length) {
@@ -75,16 +98,11 @@ export function EnrollScreen(): React.JSX.Element {
     } else {
       setStep('processing')
       try {
-        if (descriptorsRef.current.length < 3) {
-          throw new Error(
-            'Too many angles failed to capture a face — try again with better lighting.'
-          )
-        }
-        // Store each angle's descriptor separately rather than averaging
-        // them — averaging very different head poses together dilutes the
-        // representation and pulls it away from what a normal frontal live
-        // scan looks like. Matching instead compares against every stored
-        // descriptor and keeps the best result.
+        // Store every captured frame's descriptor separately rather than
+        // averaging them — averaging different head poses/instants
+        // together dilutes the representation and pulls it away from what
+        // a normal frontal live scan looks like. Matching instead compares
+        // against every stored descriptor and keeps the best result.
         await enrollUser(name.trim() || 'Operator', descriptorsRef.current)
         setStep('done')
         if (soundsEnabled) sfx.accessGranted()
@@ -191,20 +209,37 @@ export function EnrollScreen(): React.JSX.Element {
                 </div>
                 {enrollError && (
                   <div className="gl-mono text-xs mb-3" style={{ color: 'var(--gl-danger)' }}>
-                    {enrollError} — try again.
+                    {enrollError}
                   </div>
                 )}
                 <button
                   onClick={captureNextAngle}
-                  className="w-full rounded-lg py-2 gl-mono text-sm uppercase tracking-widest"
+                  disabled={isCapturing}
+                  className="w-full rounded-lg py-2 gl-mono text-sm uppercase tracking-widest disabled:opacity-60"
                   style={{
                     background: 'var(--gl-accent-soft)',
                     color: 'var(--gl-accent)',
                     border: '1px solid var(--gl-glass-border)'
                   }}
                 >
-                  Capture
+                  {isCapturing
+                    ? `Hold still — capturing ${burstProgress.done}/${burstProgress.total}`
+                    : 'Start Capture'}
                 </button>
+                {isCapturing && (
+                  <div
+                    className="h-1 w-full rounded-full mt-2 overflow-hidden"
+                    style={{ background: 'var(--gl-glass-border)' }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all duration-150"
+                      style={{
+                        background: 'var(--gl-accent)',
+                        width: `${burstProgress.total ? (burstProgress.done / burstProgress.total) * 100 : 0}%`
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="flex gap-1 mt-4">
                   {CAPTURE_STEPS.map((s) => (
                     <div

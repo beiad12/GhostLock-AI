@@ -91,6 +91,32 @@ export class RealFaceAuthProvider implements FaceAuthProvider {
     return descriptor
   }
 
+  async captureEmbeddingBurst(
+    durationMs: number,
+    intervalMs: number,
+    onFrame?: (framesCaptured: number, totalSteps: number) => void
+  ): Promise<Float32Array[]> {
+    if (!this.video) return []
+    const descriptors: Float32Array[] = []
+    const steps = Math.max(1, Math.floor(durationMs / intervalMs))
+    for (let i = 0; i < steps; i++) {
+      try {
+        const result = await faceapi
+          .detectSingleFace(this.video, detectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptor()
+        if (result) descriptors.push(result.descriptor)
+      } catch (err) {
+        // One bad frame in the burst shouldn't kill the rest of it — skip
+        // and keep sampling.
+        console.error('[RealFaceAuthProvider] burst frame failed', err)
+      }
+      onFrame?.(i + 1, steps)
+      await delay(intervalMs)
+    }
+    return descriptors
+  }
+
   /** Lets the caller feed the HUD confidence gauge after comparing a
    * captured descriptor against a user's stored gallery via
    * `matchConfidence` — this class no longer does that comparison itself. */

@@ -30,6 +30,20 @@ export interface FaceAuthProvider {
    * comparing against inconsistent live frames.
    */
   captureEmbedding(): Promise<Float32Array>
+  /**
+   * Samples many descriptors over a short window instead of one single
+   * snapshot — used during enrollment so the stored gallery captures how a
+   * face actually looks across dozens of slightly different frames (micro
+   * head movement, blinking, lighting flicker) instead of one instant per
+   * angle. Every frame that successfully finds a face contributes its own
+   * descriptor to the gallery; frames where no face is found are simply
+   * skipped rather than failing the whole burst.
+   */
+  captureEmbeddingBurst(
+    durationMs: number,
+    intervalMs: number,
+    onFrame?: (framesCaptured: number, totalSteps: number) => void
+  ): Promise<Float32Array[]>
   /** Evaluates whether the current live face satisfies a liveness challenge. */
   evaluateLivenessChallenge(kind: LivenessChallengeKind): Promise<boolean>
   /** Feeds the HUD's identity-confidence gauge after the caller computes a

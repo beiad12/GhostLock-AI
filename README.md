@@ -54,6 +54,17 @@ tune, not finished calibration:
   to hurt matching — averaging poses as different as a hard head-turn and
   a frontal smile pulls the "canonical" embedding away from what a normal
   frontal live scan actually looks like. Gallery matching avoids that.
+- **Burst capture per angle, not one snapshot.** Each of the 6 angles is
+  now a ~1.8s burst (`EnrollScreen.tsx`, `captureEmbeddingBurst` in
+  `RealFaceAuthProvider.ts`) sampling a new frame roughly every 150ms while
+  you hold the pose, and every frame that successfully finds a face
+  contributes its own descriptor to the gallery — typically 8-12 per angle,
+  so a full enrollment ends up with 50-70 stored descriptors instead of 6.
+  This is a real, meaningful accuracy lever: a single photo-worth of your
+  face per angle is a narrow sample of what your face actually looks like
+  moment to moment (blinks, micro head movement, lighting flicker); dozens
+  of samples per angle give live matching many more chances to find a close
+  match. A step needs at least 3 successful frames or it must be retried.
 - **Liveness thresholds** (`RealFaceAuthProvider.evaluateLivenessChallenge`)
   use fixed deltas (e.g. blink = EAR drops below 72% of baseline) that have
   never been checked against an actual blink/head-turn/smile. They may be

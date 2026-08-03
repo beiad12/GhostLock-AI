@@ -59,6 +59,21 @@ export class MockFaceAuthProvider implements FaceAuthProvider {
     return embedding
   }
 
+  async captureEmbeddingBurst(
+    durationMs: number,
+    intervalMs: number,
+    onFrame?: (framesCaptured: number, totalSteps: number) => void
+  ): Promise<Float32Array[]> {
+    const steps = Math.max(1, Math.floor(durationMs / intervalMs))
+    const descriptors: Float32Array[] = []
+    for (let i = 0; i < steps; i++) {
+      descriptors.push(await this.captureEmbedding())
+      onFrame?.(i + 1, steps)
+      await delay(intervalMs)
+    }
+    return descriptors
+  }
+
   async evaluateLivenessChallenge(kind: LivenessChallengeKind): Promise<boolean> {
     void kind
     await delay(1100 + Math.random() * 700)
