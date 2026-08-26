@@ -1,5 +1,11 @@
 export type ThemeId =
-  'cyberGreen' | 'blueHologram' | 'redAlert' | 'purpleNeon' | 'matrix' | 'whiteSciFi'
+  | 'cyberGreen'
+  | 'blueHologram'
+  | 'redAlert'
+  | 'purpleNeon'
+  | 'matrix'
+  | 'whiteSciFi'
+  | 'coloringBookTesting'
 
 export interface ThemeDefinition {
   id: ThemeId
