@@ -126,6 +126,27 @@ export const THEMES: Record<ThemeId, ThemeDefinition> = {
       warning: '#ffc94a',
       success: '#7ef7c4'
     }
+  },
+  coloringBookTesting: {
+    id: 'coloringBookTesting',
+    name: 'Coloring Book Testing',
+    description: 'Bright marker accents for playful UI testing',
+    colors: {
+      accent: '#ff4fd8',
+      accentSoft: 'rgba(255, 79, 216, 0.18)',
+      accentStrong: '#ff8ee7',
+      secondary: '#35d7ff',
+      background: '#fff8e7',
+      backgroundElevated: '#fff0c9',
+      glass: 'rgba(255, 255, 255, 0.7)',
+      glassBorder: 'rgba(255, 79, 216, 0.35)',
+      textPrimary: '#2f2440',
+      textSecondary: '#6b4e86',
+      textMuted: '#9a7cb4',
+      danger: '#ff3d57',
+      warning: '#ffb000',
+      success: '#16b970'
+    }
   }
 }
 
